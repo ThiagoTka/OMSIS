@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Gestão Sequencial</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .disabled { color: #999; }
+        .success { color: green; font-weight: bold; }
+        .alert { background: #ffcccc; padding: 10px; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <h1>Lista de Atividades Sequenciais</h1>
+    
+    <div style="background: #eee; padding: 10px;">
+        <strong>Logado como:</strong> {{ usuario_atual }}
+        <span style="margin-left: 20px;">Alternar para:</span>
+        <a href="/?user=Alice">Alice</a> | 
+        <a href="/?user=Bob">Bob</a> | 
+        <a href="/?user=Carlos">Carlos</a>
+        <span style="float: right;"><a href="/reset">Resetar Dados</a></span>
+    </div>
+
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <table>
+        <tr>
+            <th>Seq</th>
+            <th>Atividade</th>
+            <th>Responsável</th>
+            <th>Liberada em</th>
+            <th>Concluída em</th>
+            <th>Ação</th>
+        </tr>
+        {% for atv in atividades %}
+        <tr class="{% if not atv.data_liberacao %}disabled{% endif %}">
+            <td>{{ atv.numero_sequencial }}</td>
+            <td>{{ atv.descricao }}</td>
+            <td>{{ atv.responsavel }}</td>
+            <td>{{ atv.data_liberacao.strftime('%d/%m %H:%M') if atv.data_liberacao else 'Aguardando Anterior' }}</td>
+            <td>
+                {% if atv.data_conclusao %}
+                    <span class="success">{{ atv.data_conclusao.strftime('%d/%m %H:%M') }}</span>
+                {% else %}
+                    -
+                {% endif %}
+            </td>
+            <td>
+                {% if not atv.data_conclusao %}
+                    <form action="/concluir/{{ atv.id }}" method="POST">
+                        <input type="hidden" name="usuario_atual" value="{{ usuario_atual }}">
+                        <button type="submit" 
+                            {% if not atv.data_liberacao or atv.responsavel != usuario_atual %}disabled{% endif %}>
+                            Concluir
+                        </button>
+                    </form>
+                {% else %}
+                    Concluído
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+</body>
+</html>
