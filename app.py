@@ -34,6 +34,14 @@ else:
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
+
+print("DB CONFIG:")
+print("DATABASE_URL:", os.environ.get("DATABASE_URL"))
+print("DB_USER:", os.environ.get("DB_USER"))
+print("DB_NAME:", os.environ.get("DB_NAME"))
+print("CLOUD_SQL_CONNECTION_NAME:", os.environ.get("CLOUD_SQL_CONNECTION_NAME"))
+
+
 db = SQLAlchemy(app)
 
 # --- Configuração do Flask-Login ---
