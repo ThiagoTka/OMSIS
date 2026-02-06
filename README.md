@@ -1,5 +1,5 @@
 gcloud run deploy imsis --source .
 
 git add .
-git commit -m "Nova funcionalidade X"
+git commit -m "Secrets v2"
 git push
