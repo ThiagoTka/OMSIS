@@ -21,12 +21,13 @@ elif os.environ.get('DB_USER') and os.environ.get('DB_PASS') and os.environ.get(
     db_name = os.environ.get('DB_NAME')
     cloud_sql_instance = os.environ.get('CLOUD_SQL_CONNECTION_NAME')
     if cloud_sql_instance:
-        # Cloud Run com unix socket
-        app.config['SQLALCHEMY_DATABASE_URI'] = f'postgresql://{db_user}:{db_pass}@/{db_name}?unix_sock=/cloudsql/{cloud_sql_instance}'
+        # Cloud Run com unix socket — usar psycopg2 e query param host=/cloudsql/INSTANCE
+        app.config['SQLALCHEMY_DATABASE_URI'] = f'postgresql+psycopg2://{db_user}:{db_pass}@/{db_name}?host=/cloudsql/{cloud_sql_instance}'
     else:
         # Fallback: assume TCP connection
         db_host = os.environ.get('DB_HOST', 'localhost')
-        app.config['SQLALCHEMY_DATABASE_URI'] = f'postgresql://{db_user}:{db_pass}@{db_host}:5432/{db_name}'
+        db_port = os.environ.get('DB_PORT', '5432')
+        app.config['SQLALCHEMY_DATABASE_URI'] = f'postgresql+psycopg2://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}'
 else:
     # SQLite local (desenvolvimento)
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///tarefas.db'
