@@ -2,30 +2,27 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Atividades - {{ cenario.cenario }}</title>
-<!-- <style>
-        body { font-family: sans-serif; padding: 20px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        th { background-color: #f2f2f2; }
-        .disabled { color: #999; }
-        .success { color: green; font-weight: bold; }
-    </style>
-    </style>
--->
+    <title>Atividades - {{ projeto.nome }} / {{ fase.nome }} / {{ cenario.cenario }}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-
 </head>
 <body>
     <div class="page-container">
 
         <div class="page-header">
-            <h1>Atividades do Cenário: {{ cenario.cenario }}</h1>
+            <h1>Atividades - {{ projeto.nome }} / {{ fase.nome }} / {{ cenario.cenario }}</h1>
 
             <div class="user-bar">
-                <a href="/cenarios">← Voltar para Cenários</a>
+                <a href="{{ url_for('cenarios_por_fase', projeto_id=projeto.id, fase_id=fase.id) }}">← Voltar para Cenários</a>
                 <span><strong>Logado como:</strong> {{ usuario_atual }}</span>
             </div>
+
+            {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+            {% endwith %}
 
             <h3>Adicionar Atividade</h3>
 
@@ -83,6 +80,10 @@
                         <span class="status-success">Concluído</span>
                     {% endif %}
 
+                    <a href="#edit-{{ atv.id }}" style="margin-left:6px;">
+                        <button type="button">Editar</button>
+                    </a>
+
                     <form action="/atividades/{{ atv.id }}/delete" method="POST" style="display:inline-block; margin-left:6px;">
                         <button class="btn-danger" type="submit"
                             onclick="return confirm('Excluir esta atividade?')">
@@ -94,5 +95,35 @@
             {% endfor %}
         </table>
 
+        <!-- Modais de Edição -->
+        {% for atv in atividades %}
+        <div id="edit-{{ atv.id }}" class="modal">
+            <div class="modal-content">
+                <a href="#" class="close">&times;</a>
+                <h3>Editar Atividade</h3>
+                <form action="/atividades/{{ atv.id }}/editar" method="POST" class="edit-form">
+                    <label>Sequência:</label>
+                    <input type="number" name="numero_sequencial" value="{{ atv.numero_sequencial }}" required>
+                    
+                    <label>Descrição:</label>
+                    <input type="text" name="descricao" value="{{ atv.descricao }}" required>
+                    
+                    <label>Responsável:</label>
+                    <select name="responsavel" required>
+                        {% for u in usuarios %}
+                        <option value="{{ u.username }}" {% if u.username == atv.responsavel %}selected{% endif %}>
+                            {{ u.username }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    
+                    <button type="submit">Salvar</button>
+                    <a href="#" style="text-align:center; margin-top:10px;">Cancelar</a>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+
     </div>
 </body>
+</html>

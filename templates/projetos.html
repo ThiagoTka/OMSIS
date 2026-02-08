@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Projetos - IMSIS</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="page-container">
+
+        <div class="page-header">
+            <h1>Projetos</h1>
+
+            <div class="user-bar">
+                <div>
+                    <strong>Logado como:</strong> {{ usuario_atual }}
+                </div>
+                <a href="/logout">Sair</a>
+            </div>
+
+            {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+            {% endwith %}
+
+            <h3>Criar novo Projeto</h3>
+
+            <form method="POST" class="create-form">
+                <input type="text" name="nome" placeholder="Nome do projeto" required>
+                <select name="membros" multiple style="min-width:220px;">
+                    {% for u in usuarios %}
+                    <option value="{{ u.id }}">{{ u.username }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit">Criar</button>
+            </form>
+            <p>Selecione os membros com Ctrl/Cmd + clique (o criador sempre vira membro).</p>
+        </div>
+
+        <table>
+            <tr>
+                <th>ID</th>
+                <th>Projeto</th>
+                <th>Membros</th>
+                <th>Ação</th>
+            </tr>
+            {% for p in projetos %}
+            <tr>
+                <td>{{ p.id }}</td>
+                <td>{{ p.nome }}</td>
+                <td>
+                    {% for m in p.membros %}
+                        {{ m.user.username }}{% if not loop.last %}, {% endif %}
+                    {% endfor %}
+                </td>
+                <td>
+                    <form action="{{ url_for('fases', projeto_id=p.id) }}" method="GET" style="display:inline-block;">
+                        <button type="submit">Ver Fases</button>
+                    </form>
+                    <form action="{{ url_for('adicionar_membro_projeto', projeto_id=p.id) }}" method="POST" style="display:inline-block; margin-left:8px;">
+                        <select name="user_id" required>
+                            <option value="" disabled selected>Adicionar membro</option>
+                            {% for u in usuarios %}
+                            <option value="{{ u.id }}">{{ u.username }}</option>
+                            {% endfor %}
+                        </select>
+                        <button type="submit">Adicionar</button>
+                    </form>
+                    <form action="{{ url_for('remover_membro_projeto', projeto_id=p.id) }}" method="POST" style="display:inline-block; margin-left:8px;">
+                        <select name="user_id" required>
+                            <option value="" disabled selected>Remover membro</option>
+                            {% for m in p.membros %}
+                            <option value="{{ m.user.id }}">{{ m.user.username }}</option>
+                            {% endfor %}
+                        </select>
+                        <button type="submit">Remover</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+
+    </div>
+</body>
+</html>

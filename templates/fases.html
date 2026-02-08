@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Fases - {{ projeto.nome }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="page-container">
+
+        <div class="page-header">
+            <h1>Fases - {{ projeto.nome }}</h1>
+
+            <div class="user-bar">
+                <div>
+                    <strong>Logado como:</strong> {{ usuario_atual }}
+                </div>
+                <div>
+                    <a href="{{ url_for('projetos') }}">← Voltar para Projetos</a>
+                    <span style="margin-left:12px;"><a href="/logout">Sair</a></span>
+                </div>
+            </div>
+
+            {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+            {% endwith %}
+
+            <h3>Criar nova Fase</h3>
+
+            <form method="POST" class="create-form">
+                <input type="text" name="fase" placeholder="Nome da fase" required>
+                <button type="submit">Criar</button>
+            </form>
+        </div>
+
+        <table>
+            <tr>
+                <th>ID</th>
+                <th>Fase</th>
+                <th>Ação</th>
+            </tr>
+            {% for f in fases %}
+            <tr>
+                <td>{{ f.id }}</td>
+                <td>{{ f.nome }}</td>
+                <td>
+                    <form action="{{ url_for('cenarios_por_fase', projeto_id=projeto.id, fase_id=f.id) }}" method="GET" style="display:inline-block;">
+                        <button type="submit">Ver Cenários</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+
+    </div>
+</body>
+</html>

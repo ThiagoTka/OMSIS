@@ -252,6 +252,7 @@ tr:hover td {
 td button {
   font-size: 0.85rem;
   padding: 6px 10px;
+  width: auto;
 }
 
 td form:last-child button {
@@ -386,4 +387,58 @@ button:disabled {
 
 .user-bar a:hover {
   text-decoration: underline;
+}
+
+/* =======================
+   MODAL
+======================= */
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 1000;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0,0,0,0.5);
+}
+
+.modal:target {
+  display: block;
+}
+
+.modal-content {
+  background-color: var(--bg-card);
+  margin: 10% auto;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  width: 500px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+}
+
+.modal-content h3 {
+  margin-top: 0;
+}
+
+.modal-content .close {
+  float: right;
+  font-size: 28px;
+  font-weight: bold;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.modal-content .close:hover {
+  color: var(--danger);
+}
+
+.edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.edit-form input, .edit-form select {
+  width: 100%;
 }
