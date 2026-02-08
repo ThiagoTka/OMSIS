@@ -2,14 +2,13 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Projetos - IMSIS</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-</head>
-<body>
+    <title>Meus Projetos - IMSIS</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">    <script src="{{ url_for('static', filename='js/theme.js') }}"></script></head>
+<body class="projects-page">
     <div class="page-container">
-
         <div class="page-header">
-            <h1>Projetos</h1>
+            <h1>Meus Projetos</h1>
+            <p class="page-subtitle">Gerencie seus ciclos de testes e homologacoes.</p>
 
             <div class="user-bar">
                 <div>
@@ -18,71 +17,146 @@
                 <a href="/logout">Sair</a>
             </div>
 
-            {% with messages = get_flashed_messages() %}
+            {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
-                {% for message in messages %}
-                    <div class="alert">{{ message }}</div>
+                {% for category, message in messages %}
+                    <div class="alert {{ category }}">{{ message }}</div>
                 {% endfor %}
             {% endif %}
             {% endwith %}
 
-            <h3>Criar novo Projeto</h3>
-
-            <form method="POST" class="create-form">
-                <input type="text" name="nome" placeholder="Nome do projeto" required>
-                <select name="membros" multiple style="min-width:220px;">
-                    {% for u in usuarios %}
-                    <option value="{{ u.id }}">{{ u.username }}</option>
-                    {% endfor %}
-                </select>
-                <button type="submit">Criar</button>
-            </form>
-            <p>Selecione os membros com Ctrl/Cmd + clique (o criador sempre vira membro).</p>
+            <div class="header-actions">
+                <div></div>
+                <button class="btn-criar-projeto" onclick="abrirModalCriar()">+ Criar Novo Projeto</button>
+            </div>
         </div>
 
-        <table>
-            <tr>
-                <th>ID</th>
-                <th>Projeto</th>
-                <th>Membros</th>
-                <th>Ação</th>
-            </tr>
+        <div class="modal-overlay" id="modalCriar">
+            <div class="modal-content">
+                <h3>Criar novo Projeto</h3>
+                <form method="POST">
+                    <label>Nome do projeto</label>
+                    <input type="text" name="nome" placeholder="Digite o nome do projeto" required>
+                    
+                    <label>Membros (selecione com Ctrl/Cmd + clique)</label>
+                    <select name="membros" multiple>
+                        {% for u in usuarios %}
+                        <option value="{{ u.id }}">{{ u.username }}</option>
+                        {% endfor %}
+                    </select>
+                    <small style="color: var(--text-secondary); display: block; margin-top: -10px; margin-bottom: 14px;">
+                        O criador sempre vira membro automaticamente.
+                    </small>
+
+                    <div class="modal-buttons">
+                        <button type="button" class="btn-cancel" onclick="fecharModalCriar()">Cancelar</button>
+                        <button type="submit" class="btn-submit">Criar Projeto</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        {% if projetos %}
+        <div class="projects-grid">
             {% for p in projetos %}
-            <tr>
-                <td>{{ p.id }}</td>
-                <td>{{ p.nome }}</td>
-                <td>
-                    {% for m in p.membros %}
-                        {{ m.user.username }}{% if not loop.last %}, {% endif %}
-                    {% endfor %}
-                </td>
-                <td>
-                    <form action="{{ url_for('fases', projeto_id=p.id) }}" method="GET" style="display:inline-block;">
-                        <button type="submit">Ver Fases</button>
-                    </form>
-                    <form action="{{ url_for('adicionar_membro_projeto', projeto_id=p.id) }}" method="POST" style="display:inline-block; margin-left:8px;">
-                        <select name="user_id" required>
+            <div class="project-card">
+                <h3 class="project-name">{{ p.nome }}</h3>
+                
+                <p class="project-description">
+                    {% if p.membros|length == 1 %}
+                        Projeto com 1 membro
+                    {% else %}
+                        Projeto com {{ p.membros|length }} membros
+                    {% endif %}
+                </p>
+
+                <div class="project-progress">
+                    <div class="progress-label">
+                        <span>Progresso</span>
+                        <span>0%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 0%;"></div>
+                    </div>
+                </div>
+
+                <div class="project-footer">
+                    <div class="project-members">
+                        {% for m in p.membros[:3] %}
+                            <div class="member-avatar" title="{{ m.user.username }}">
+                                {{ m.user.username[0:1].upper() }}
+                            </div>
+                        {% endfor %}
+                        {% if p.membros|length > 3 %}
+                            <div class="member-avatar" style="font-size: 0.65rem;">
+                                +{{ p.membros|length - 3 }}
+                            </div>
+                        {% endif %}
+                    </div>
+                    <span class="project-status">Planejamento</span>
+                </div>
+
+                <div class="project-actions">
+                    <a href="{{ url_for('fluxo', projeto_id=p.id) }}" style="text-decoration: none;">
+                        <button class="btn-action btn-action-primary" type="button">Acessar Projeto</button>
+                    </a>
+                    <button class="btn-action" type="button" onclick="toggleMenu({{ p.id }})">Gerenciar</button>
+                </div>
+
+                <div id="menu-{{ p.id }}" style="display: none; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border);">
+                    <form action="{{ url_for('adicionar_membro_projeto', projeto_id=p.id) }}" method="POST" style="margin-bottom: 10px;">
+                        <select name="user_id" required style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--border); margin-bottom: 8px;">
                             <option value="" disabled selected>Adicionar membro</option>
                             {% for u in usuarios %}
                             <option value="{{ u.id }}">{{ u.username }}</option>
                             {% endfor %}
                         </select>
-                        <button type="submit">Adicionar</button>
+                        <button type="submit" class="btn-action" style="margin-bottom: 10px;">Adicionar</button>
                     </form>
-                    <form action="{{ url_for('remover_membro_projeto', projeto_id=p.id) }}" method="POST" style="display:inline-block; margin-left:8px;">
-                        <select name="user_id" required>
+                    
+                    <form action="{{ url_for('remover_membro_projeto', projeto_id=p.id) }}" method="POST">
+                        <select name="user_id" required style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--border); margin-bottom: 8px;">
                             <option value="" disabled selected>Remover membro</option>
                             {% for m in p.membros %}
                             <option value="{{ m.user.id }}">{{ m.user.username }}</option>
                             {% endfor %}
                         </select>
-                        <button type="submit">Remover</button>
+                        <button type="submit" class="btn-action" style="background-color: rgba(220, 38, 38, 0.1); color: var(--danger);">Remover</button>
                     </form>
-                </td>
-            </tr>
+                </div>
+            </div>
             {% endfor %}
-        </table>
-
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <h3>Nenhum projeto ainda</h3>
+            <p>Crie seu primeiro projeto para comecar</p>
+            <button class="btn-criar-projeto" onclick="abrirModalCriar()">+ Criar Novo Projeto</button>
+        </div>
+        {% endif %}
     </div>
+
+    <script>
+        function abrirModalCriar() {
+            document.getElementById('modalCriar').classList.add('active');
+        }
+
+        function fecharModalCriar() {
+            document.getElementById('modalCriar').classList.remove('active');
+        }
+
+        function toggleMenu(projetoId) {
+            const menu = document.getElementById('menu-' + projetoId);
+            if (menu) {
+                menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+            }
+        }
+
+        document.getElementById('modalCriar').addEventListener('click', function(e) {
+            if (e.target === this) {
+                fecharModalCriar();
+            }
+        });
+    </script>
 </body>
 </html>

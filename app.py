@@ -410,6 +410,316 @@ def remover_membro_projeto(projeto_id):
     return redirect(url_for("projetos"))
 
 
+@app.route("/projetos/<int:projeto_id>/fluxo", methods=["GET", "POST"])
+@login_required
+def fluxo(projeto_id):
+    projeto = Projeto.query.get_or_404(projeto_id)
+    if not is_project_member(projeto_id):
+        abort(403)
+
+    # Processar POST (criar fase, cenário ou atividade)
+    if request.method == "POST":
+        fase_id = request.args.get("fase", type=int)
+        cenario_id = request.args.get("cenario", type=int)
+        
+        if request.form.get("fase"):
+            # Criar fase
+            nome = request.form.get("fase")
+            if nome:
+                db.session.add(Fase(nome=nome, projeto_id=projeto_id))
+                db.session.commit()
+                flash("Fase criada com sucesso", "success")
+            return redirect(url_for("fluxo", projeto_id=projeto_id))
+        
+        elif request.form.get("cenario"):
+            # Criar cenário
+            nome = request.form.get("cenario")
+            if nome and fase_id:
+                db.session.add(Cenario(cenario=nome, fase_id=fase_id))
+                db.session.commit()
+                flash("Cenário criado com sucesso", "success")
+            return redirect(url_for("fluxo", projeto_id=projeto_id, fase=fase_id))
+        
+        elif request.form.get("descricao"):
+            # Criar atividade
+            try:
+                numero = int(request.form.get("numero_sequencial") or 0)
+            except ValueError:
+                numero = 0
+            descricao = request.form.get("descricao")
+            responsavel = request.form.get("responsavel")
+            
+            if descricao and responsavel and cenario_id:
+                nova = Atividade(
+                    numero_sequencial=numero,
+                    descricao=descricao,
+                    responsavel=responsavel,
+                    cenario_id=cenario_id,
+                )
+                db.session.add(nova)
+                db.session.commit()
+                
+                # Se não houver nenhuma atividade liberada neste cenário, liberar a primeira (menor seq)
+                any_liberada = (
+                    Atividade.query
+                    .filter_by(cenario_id=cenario_id)
+                    .filter(Atividade.data_liberacao != None)
+                    .first()
+                )
+                if not any_liberada:
+                    primeira = (
+                        Atividade.query
+                        .filter_by(cenario_id=cenario_id)
+                        .order_by(Atividade.numero_sequencial)
+                        .first()
+                    )
+                    if primeira and not primeira.data_liberacao:
+                        primeira.data_liberacao = datetime.now()
+                        db.session.commit()
+                
+                flash("Atividade criada com sucesso", "success")
+            return redirect(url_for("fluxo", projeto_id=projeto_id, fase=fase_id, cenario=cenario_id))
+
+    # Carregar todas as fases com seus cenários
+    fases = Fase.query.filter_by(projeto_id=projeto_id).order_by(Fase.id).all()
+    
+    # Para cada fase, carregar seus cenários
+    for fase in fases:
+        fase.cenarios = Cenario.query.filter_by(fase_id=fase.id).order_by(Cenario.id).all()
+        # Para cada cenário, carregar suas atividades
+        for cenario in fase.cenarios:
+            cenario.atividades = (
+                Atividade.query
+                .filter_by(cenario_id=cenario.id)
+                .order_by(Atividade.numero_sequencial)
+                .all()
+            )
+
+    # Fase selecionada (da query string)
+    fase_id = request.args.get("fase", type=int)
+    fase_selecionada = None
+    cenarios = []
+    
+    if fase_id:
+        fase_selecionada = Fase.query.filter_by(id=fase_id, projeto_id=projeto_id).first()
+        if fase_selecionada:
+            cenarios = Cenario.query.filter_by(fase_id=fase_id).order_by(Cenario.id).all()
+            # Carregar atividades para cada cenário
+            for cenario in cenarios:
+                cenario.atividades = (
+                    Atividade.query
+                    .filter_by(cenario_id=cenario.id)
+                    .order_by(Atividade.numero_sequencial)
+                    .all()
+                )
+
+    # Cenário selecionado (da query string)
+    cenario_id = request.args.get("cenario", type=int)
+    cenario_selecionado = None
+    atividades = []
+    usuarios = []
+    
+    if cenario_id:
+        cenario_selecionado = Cenario.query.filter_by(id=cenario_id, fase_id=fase_id).first() if fase_id else None
+        if cenario_selecionado:
+            atividades = (
+                Atividade.query
+                .filter_by(cenario_id=cenario_id)
+                .order_by(Atividade.numero_sequencial)
+                .all()
+            )
+            # Apenas membros do projeto podem ser responsáveis
+            usuarios = (
+                User.query
+                .join(ProjetoMembro)
+                .filter(ProjetoMembro.projeto_id == projeto_id)
+                .order_by(User.username)
+                .all()
+            )
+
+    return render_template(
+        "fluxo.html",
+        projeto=projeto,
+        fases=fases,
+        fase_selecionada=fase_selecionada,
+        cenarios=cenarios,
+        cenario_selecionado=cenario_selecionado,
+        atividades=atividades,
+        usuario_atual=current_user.username,
+        usuarios=usuarios,
+    )
+
+
+@app.route("/projetos/<int:projeto_id>/editar_fase", methods=["POST"])
+@login_required
+def fluxo_editar_fase(projeto_id):
+    if not is_project_member(projeto_id):
+        abort(403)
+    
+    fase_id = request.form.get("fase_id", type=int)
+    novo_nome = request.form.get("nome")
+    
+    if fase_id and novo_nome:
+        fase = Fase.query.get_or_404(fase_id)
+        if fase.projeto_id == projeto_id:
+            fase.nome = novo_nome
+            db.session.commit()
+            flash("Fase atualizada com sucesso", "success")
+    
+    return redirect(url_for("fluxo", projeto_id=projeto_id))
+
+
+@app.route("/projetos/<int:projeto_id>/excluir_fase", methods=["POST"])
+@login_required
+def fluxo_excluir_fase(projeto_id):
+    if not is_project_member(projeto_id):
+        abort(403)
+    
+    fase_id = request.form.get("fase_id", type=int)
+    
+    if fase_id:
+        fase = Fase.query.get_or_404(fase_id)
+        if fase.projeto_id == projeto_id:
+            # Excluir cenários e atividades relacionados
+            cenarios = Cenario.query.filter_by(fase_id=fase_id).all()
+            for cenario in cenarios:
+                Atividade.query.filter_by(cenario_id=cenario.id).delete()
+                db.session.delete(cenario)
+            db.session.delete(fase)
+            db.session.commit()
+            flash("Fase excluída com sucesso", "success")
+    
+    return redirect(url_for("fluxo", projeto_id=projeto_id))
+
+
+@app.route("/projetos/<int:projeto_id>/editar_cenario", methods=["POST"])
+@login_required
+def fluxo_editar_cenario(projeto_id):
+    if not is_project_member(projeto_id):
+        abort(403)
+    
+    cenario_id = request.form.get("cenario_id", type=int)
+    novo_nome = request.form.get("nome")
+    fase_id = request.form.get("fase_id", type=int)
+    
+    if cenario_id and novo_nome:
+        cenario = Cenario.query.get_or_404(cenario_id)
+        fase = Fase.query.get_or_404(cenario.fase_id)
+        if fase.projeto_id == projeto_id:
+            cenario.cenario = novo_nome
+            db.session.commit()
+            flash("Cenário atualizado com sucesso", "success")
+    
+    return redirect(url_for("fluxo", projeto_id=projeto_id, fase=fase_id))
+
+
+@app.route("/projetos/<int:projeto_id>/excluir_cenario", methods=["POST"])
+@login_required
+def fluxo_excluir_cenario(projeto_id):
+    if not is_project_member(projeto_id):
+        abort(403)
+    
+    cenario_id = request.form.get("cenario_id", type=int)
+    fase_id = request.form.get("fase_id", type=int)
+    
+    if cenario_id:
+        cenario = Cenario.query.get_or_404(cenario_id)
+        fase = Fase.query.get_or_404(cenario.fase_id)
+        if fase.projeto_id == projeto_id:
+            # Excluir atividades relacionadas
+            Atividade.query.filter_by(cenario_id=cenario_id).delete()
+            db.session.delete(cenario)
+            db.session.commit()
+            flash("Cenário excluído com sucesso", "success")
+    
+    return redirect(url_for("fluxo", projeto_id=projeto_id, fase=fase_id))
+
+
+@app.route("/projetos/<int:projeto_id>/editar_atividade", methods=["POST"])
+@login_required
+def fluxo_editar_atividade(projeto_id):
+    if not is_project_member(projeto_id):
+        abort(403)
+    
+    atividade_id = request.form.get("atividade_id", type=int)
+    numero_sequencial = request.form.get("numero_sequencial", type=int)
+    descricao = request.form.get("descricao")
+    responsavel = request.form.get("responsavel")
+    fase_id = request.form.get("fase_id", type=int)
+    cenario_id = request.form.get("cenario_id", type=int)
+    
+    if atividade_id and descricao and responsavel:
+        atividade = Atividade.query.get_or_404(atividade_id)
+        cenario = Cenario.query.get_or_404(atividade.cenario_id)
+        fase = Fase.query.get_or_404(cenario.fase_id)
+        if fase.projeto_id == projeto_id:
+            atividade.numero_sequencial = numero_sequencial
+            atividade.descricao = descricao
+            atividade.responsavel = responsavel
+            db.session.commit()
+            flash("Atividade atualizada com sucesso", "success")
+    
+    return redirect(url_for("fluxo", projeto_id=projeto_id, fase=fase_id, cenario=cenario_id))
+
+
+@app.route("/projetos/<int:projeto_id>/excluir_atividade", methods=["POST"])
+@login_required
+def fluxo_excluir_atividade(projeto_id):
+    if not is_project_member(projeto_id):
+        abort(403)
+    
+    atividade_id = request.form.get("atividade_id", type=int)
+    fase_id = request.form.get("fase_id", type=int)
+    cenario_id = request.form.get("cenario_id", type=int)
+    
+    if atividade_id:
+        atividade = Atividade.query.get_or_404(atividade_id)
+        cenario = Cenario.query.get_or_404(atividade.cenario_id)
+        fase = Fase.query.get_or_404(cenario.fase_id)
+        if fase.projeto_id == projeto_id:
+            db.session.delete(atividade)
+            db.session.commit()
+            flash("Atividade excluída com sucesso", "success")
+    
+    return redirect(url_for("fluxo", projeto_id=projeto_id, fase=fase_id, cenario=cenario_id))
+
+
+@app.route("/projetos/<int:projeto_id>/concluir_atividade", methods=["POST"])
+@login_required
+def fluxo_concluir_atividade(projeto_id):
+    if not is_project_member(projeto_id):
+        abort(403)
+    
+    atividade_id = request.form.get("atividade_id", type=int)
+    fase_id = request.form.get("fase_id", type=int)
+    cenario_id = request.form.get("cenario_id", type=int)
+    
+    if atividade_id:
+        atividade = Atividade.query.get_or_404(atividade_id)
+        cenario = Cenario.query.get_or_404(atividade.cenario_id)
+        fase = Fase.query.get_or_404(cenario.fase_id)
+        if fase.projeto_id == projeto_id:
+            atividade.data_conclusao = datetime.now()
+            db.session.commit()
+            
+            # Liberar próxima atividade na sequência
+            proxima = (
+                Atividade.query
+                .filter_by(cenario_id=cenario_id)
+                .filter(Atividade.numero_sequencial > atividade.numero_sequencial)
+                .filter(Atividade.data_liberacao == None)
+                .order_by(Atividade.numero_sequencial)
+                .first()
+            )
+            if proxima:
+                proxima.data_liberacao = datetime.now()
+                db.session.commit()
+            
+            flash("Atividade concluída com sucesso", "success")
+    
+    return redirect(url_for("fluxo", projeto_id=projeto_id, fase=fase_id, cenario=cenario_id))
+
+
 @app.route("/projetos/<int:projeto_id>/fases", methods=["GET", "POST"])
 @login_required
 def fases(projeto_id):
@@ -596,7 +906,7 @@ def editar_atividade(atividade_id):
     atv.numero_sequencial = numero
     
     db.session.commit()
-    flash("Atividade atualizada com sucesso")
+    flash("Atividade atualizada com sucesso", "success")
 
     if cenario and fase:
         return redirect(
@@ -670,7 +980,7 @@ def delete_cenario(projeto_id, fase_id, cenario_id):
     Atividade.query.filter_by(cenario_id=cenario_id).delete()
     db.session.delete(c)
     db.session.commit()
-    flash("Cenário excluído")
+    flash("Cenário excluído", "success")
     return redirect(url_for("cenarios_por_fase", projeto_id=projeto_id, fase_id=fase_id))
 
 
@@ -695,7 +1005,7 @@ def concluir_atividade(atividade_id):
 
     # Segurança: apenas o responsável pode concluir
     if atv.responsavel != current_user.username:
-        flash("Apenas o responsável pode concluir esta atividade")
+        flash("Apenas o responsável pode concluir esta atividade", "error")
         return redirect_cenario()
 
     # Deve estar liberada

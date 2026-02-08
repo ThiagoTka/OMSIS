@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Fluxo - {{ projeto.nome }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+    <style>
+        .fluxo-container {
+            display: flex;
+            gap: 24px;
+            margin-top: 24px;
+        }
+
+        .fluxo-column {
+            flex: 1;
+            min-width: 350px;
+        }
+
+        .column-title {
+            background-color: var(--primary);
+            color: white;
+            padding: 12px 16px;
+            border-radius: 8px 8px 0 0;
+            font-weight: 600;
+            margin-bottom: 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .add-button {
+            background-color: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .add-button:hover {
+            background-color: rgba(255, 255, 255, 0.3);
+            transform: scale(1.1);
+        }
+
+        .column-content {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border);
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            padding: 16px;
+            min-height: 400px;
+        }
+
+        .column-item {
+            padding: 12px 14px;
+            margin-bottom: 10px;
+            background-color: var(--bg-main);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .column-item-content {
+            flex: 1;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .column-item-actions {
+            display: flex;
+            gap: 4px;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        .column-item:hover .column-item-actions {
+            opacity: 1;
+        }
+
+        .action-btn {
+            padding: 4px 8px;
+            font-size: 0.75rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background-color: transparent;
+            color: var(--text-secondary);
+        }
+
+        .action-btn:hover {
+            background-color: rgba(0, 0, 0, 0.1);
+        }
+
+        .action-btn.edit:hover {
+            background-color: var(--primary);
+            color: white;
+        }
+
+        .action-btn.delete:hover {
+            background-color: var(--danger);
+            color: white;
+        }
+
+        .action-btn.complete {
+            background-color: var(--success);
+            color: white;
+        }
+
+        .action-btn.complete:hover {
+            background-color: #28a745;
+        }
+
+        .column-item:hover {
+            background-color: #f0f4f8;
+            border-color: var(--primary);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+
+        .column-item.selected {
+            background-color: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .column-item-name {
+            font-weight: 500;
+        }
+
+        .column-item-count {
+            font-size: 0.85rem;
+            opacity: 0.7;
+        }
+
+        .column-item.selected .column-item-count {
+            color: white;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: var(--text-secondary);
+            padding: 40px 20px;
+            font-size: 0.9rem;
+        }
+
+
+
+        .atividades-list {
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .atividade-item {
+            padding: 10px 12px;
+            margin-bottom: 8px;
+            background-color: var(--bg-main);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 0.9rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 8px;
+        }
+
+        .atividade-content {
+            flex: 1;
+        }
+
+        .atividade-actions {
+            display: flex;
+            gap: 4px;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            flex-shrink: 0;
+        }
+
+        .atividade-item:hover .atividade-actions {
+            opacity: 1;
+        }
+
+        .atividade-seq {
+            font-weight: 600;
+            color: var(--primary);
+            margin-right: 6px;
+        }
+
+        .atividade-status {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-top: 4px;
+            display: block;
+        }
+
+        .atividade-status.concluida {
+            color: var(--success);
+            font-weight: 600;
+        }
+
+        .atividade-responsavel {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-top: 2px;
+            display: block;
+        }
+
+        .no-cenario-selected {
+            opacity: 0.5;
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-secondary);
+        }
+
+        /* Responsivo */
+        @media (max-width: 1200px) {
+            .fluxo-container {
+                flex-direction: column;
+            }
+
+            .fluxo-column {
+                min-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="page-container">
+
+        <div class="page-header">
+            <h1>{{ projeto.nome }}</h1>
+
+            <div class="user-bar">
+                <div>
+                    <strong>Logado como:</strong> {{ usuario_atual }}
+                </div>
+                <div>
+                    <a href="{{ url_for('projetos') }}">← Voltar para Projetos</a>
+                    <span style="margin-left:12px;"><a href="/logout">Sair</a></span>
+                </div>
+            </div>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert {{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+            {% endwith %}
+        </div>
+
+        <div class="fluxo-container">
+            <!-- COLUNA FASES -->
+            <div class="fluxo-column">
+                <h3 class="column-title">
+                    <span>Fases</span>
+                    <button class="add-button" onclick="adicionarFase()" title="Adicionar Fase">+</button>
+                </h3>
+                <div class="column-content">
+                    {% if fases %}
+                        {% for f in fases %}
+                            <div class="column-item {% if f.id == fase_selecionada.id %}selected{% endif %}"
+                                 onclick="selecionarFase({{ f.id }}, event)">
+                                <div class="column-item-content">
+                                    <span class="column-item-name">{{ f.nome }}</span>
+                                    <span class="column-item-count">{{ f.cenarios|length }} cenários</span>
+                                </div>
+                                <div class="column-item-actions">
+                                    <button class="action-btn edit" onclick="editarFase({{ f.id }}, '{{ f.nome }}', event)" title="Editar">✏️</button>
+                                    <button class="action-btn delete" onclick="excluirFase({{ f.id }}, event)" title="Excluir">🗑️</button>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="empty-state">
+                            Nenhuma fase criada
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- COLUNA CENÁRIOS -->
+            <div class="fluxo-column">
+                <h3 class="column-title">
+                    <span>Cenários</span>
+                    <button class="add-button" onclick="adicionarCenario()" title="Adicionar Cenário" {% if not fase_selecionada %}disabled style="opacity: 0.5; cursor: not-allowed;"{% endif %}>+</button>
+                </h3>
+                <div class="column-content">
+                    {% if fase_selecionada %}
+                        {% if cenarios %}
+                            {% for c in cenarios %}
+                                <div class="column-item {% if c.id == cenario_selecionado.id %}selected{% endif %}"
+                                     onclick="selecionarCenario({{ c.id }}, event)">
+                                    <div class="column-item-content">
+                                        <span class="column-item-name">{{ c.cenario }}</span>
+                                        <span class="column-item-count">{{ c.atividades|length }}</span>
+                                    </div>
+                                    <div class="column-item-actions">
+                                        <button class="action-btn edit" onclick="editarCenario({{ c.id }}, '{{ c.cenario }}', event)" title="Editar">✏️</button>
+                                        <button class="action-btn delete" onclick="excluirCenario({{ c.id }}, event)" title="Excluir">🗑️</button>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="empty-state">
+                                Nenhum cenário nesta fase
+                            </div>
+                        {% endif %}
+                    {% else %}
+                        <div class="empty-state">
+                            Selecione uma fase
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- COLUNA ATIVIDADES -->
+            <div class="fluxo-column">
+                <h3 class="column-title">
+                    <span>Atividades</span>
+                    <button class="add-button" onclick="adicionarAtividade()" title="Adicionar Atividade" {% if not cenario_selecionado %}disabled style="opacity: 0.5; cursor: not-allowed;"{% endif %}>+</button>
+                </h3>
+                <div class="column-content">
+                    {% if cenario_selecionado %}
+                        {% if atividades %}
+                            <div class="atividades-list">
+                                {% for atv in atividades %}
+                                    <div class="atividade-item">
+                                        <div class="atividade-content">
+                                            <div>
+                                                <span class="atividade-seq">#{{ atv.numero_sequencial }}</span>
+                                                <strong>{{ atv.descricao }}</strong>
+                                            </div>
+                                            <span class="atividade-responsavel">Responsável: {{ atv.responsavel }}</span>
+                                            {% if atv.data_conclusao %}
+                                                <span class="atividade-status concluida">✓ Concluído em {{ atv.data_conclusao.strftime('%d/%m %H:%M') }}</span>
+                                            {% elif atv.data_liberacao %}
+                                                <span class="atividade-status">Liberada em {{ atv.data_liberacao.strftime('%d/%m %H:%M') }}</span>
+                                            {% else %}
+                                                <span class="atividade-status">Aguardando anterior</span>
+                                            {% endif %}
+                                        </div>
+                                        <div class="atividade-actions">
+                                            {% if not atv.data_conclusao and atv.data_liberacao %}
+                                                <button class="action-btn complete" onclick="concluirAtividade({{ atv.id }}, event)" title="Concluir">✓</button>
+                                            {% endif %}
+                                            <button class="action-btn edit" onclick="editarAtividade({{ atv.id }}, {{ atv.numero_sequencial }}, '{{ atv.descricao }}', '{{ atv.responsavel }}', event)" title="Editar">✏️</button>
+                                            <button class="action-btn delete" onclick="excluirAtividade({{ atv.id }}, event)" title="Excluir">🗑️</button>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="empty-state">
+                                Nenhuma atividade neste cenário
+                            </div>
+                        {% endif %}
+                    {% else %}
+                        <div class="empty-state">
+                            Selecione um cenário
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        function selecionarFase(faseId, event) {
+            if (event.target.tagName !== 'INPUT' && event.target.tagName !== 'BUTTON') {
+                window.location.href = "{{ url_for('fluxo', projeto_id=projeto.id) }}" + "?fase=" + faseId;
+            }
+        }
+
+        function selecionarCenario(cenarioId, event) {
+            if (event.target.tagName !== 'INPUT' && event.target.tagName !== 'BUTTON') {
+                const faseId = {{ fase_selecionada.id if fase_selecionada else 'null' }};
+                if (faseId) {
+                    window.location.href = "{{ url_for('fluxo', projeto_id=projeto.id) }}" + "?fase=" + faseId + "&cenario=" + cenarioId;
+                }
+            }
+        }
+
+        function editarFase(faseId, nomeAtual, event) {
+            event.stopPropagation();
+            const novoNome = prompt('Editar nome da fase:', nomeAtual);
+            if (novoNome && novoNome.trim() !== '') {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = "{{ url_for('fluxo_editar_fase', projeto_id=projeto.id) }}";
+                form.innerHTML = `
+                    <input type="hidden" name="fase_id" value="${faseId}">
+                    <input type="hidden" name="nome" value="${novoNome}">
+                `;
+                document.body.appendChild(form);
+                form.submit();
+            }
+        }
+
+        function excluirFase(faseId, event) {
+            event.stopPropagation();
+            if (confirm('Tem certeza que deseja excluir esta fase? Todos os cenários e atividades serão removidos.')) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = "{{ url_for('fluxo_excluir_fase', projeto_id=projeto.id) }}";
+                form.innerHTML = `<input type="hidden" name="fase_id" value="${faseId}">`;
+                document.body.appendChild(form);
+                form.submit();
+            }
+        }
+
+        function editarCenario(cenarioId, nomeAtual, event) {
+            event.stopPropagation();
+            const novoNome = prompt('Editar nome do cenário:', nomeAtual);
+            if (novoNome && novoNome.trim() !== '') {
+                const faseId = {{ fase_selecionada.id if fase_selecionada else 'null' }};
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = "{{ url_for('fluxo_editar_cenario', projeto_id=projeto.id) }}";
+                form.innerHTML = `
+                    <input type="hidden" name="cenario_id" value="${cenarioId}">
+                    <input type="hidden" name="nome" value="${novoNome}">
+                    <input type="hidden" name="fase_id" value="${faseId}">
+                `;
+                document.body.appendChild(form);
+                form.submit();
+            }
+        }
+
+        function excluirCenario(cenarioId, event) {
+            event.stopPropagation();
+            if (confirm('Tem certeza que deseja excluir este cenário? Todas as atividades serão removidas.')) {
+                const faseId = {{ fase_selecionada.id if fase_selecionada else 'null' }};
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = "{{ url_for('fluxo_excluir_cenario', projeto_id=projeto.id) }}";
+                form.innerHTML = `
+                    <input type="hidden" name="cenario_id" value="${cenarioId}">
+                    <input type="hidden" name="fase_id" value="${faseId}">
+                `;
+                document.body.appendChild(form);
+                form.submit();
+            }
+        }
+
+        function editarAtividade(atividadeId, seqAtual, descAtual, respAtual, event) {
+            event.stopPropagation();
+            const novaSeq = prompt('Número sequencial:', seqAtual);
+            if (novaSeq === null) return;
+            const novaDesc = prompt('Descrição:', descAtual);
+            if (novaDesc === null) return;
+            const novoResp = prompt('Responsável:', respAtual);
+            if (novoResp === null) return;
+            
+            if (novaSeq && novaDesc && novoResp) {
+                const faseId = {{ fase_selecionada.id if fase_selecionada else 'null' }};
+                const cenarioId = {{ cenario_selecionado.id if cenario_selecionado else 'null' }};
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = "{{ url_for('fluxo_editar_atividade', projeto_id=projeto.id) }}";
+                form.innerHTML = `
+                    <input type="hidden" name="atividade_id" value="${atividadeId}">
+                    <input type="hidden" name="numero_sequencial" value="${novaSeq}">
+                    <input type="hidden" name="descricao" value="${novaDesc}">
+                    <input type="hidden" name="responsavel" value="${novoResp}">
+                    <input type="hidden" name="fase_id" value="${faseId}">
+                    <input type="hidden" name="cenario_id" value="${cenarioId}">
+                `;
+                document.body.appendChild(form);
+                form.submit();
+            }
+        }
+
+        function excluirAtividade(atividadeId, event) {
+            event.stopPropagation();
+            if (confirm('Tem certeza que deseja excluir esta atividade?')) {
+                const faseId = {{ fase_selecionada.id if fase_selecionada else 'null' }};
+                const cenarioId = {{ cenario_selecionado.id if cenario_selecionado else 'null' }};
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = "{{ url_for('fluxo_excluir_atividade', projeto_id=projeto.id) }}";
+                form.innerHTML = `
+                    <input type="hidden" name="atividade_id" value="${atividadeId}">
+                    <input type="hidden" name="fase_id" value="${faseId}">
+                    <input type="hidden" name="cenario_id" value="${cenarioId}">
+                `;
+                document.body.appendChild(form);
+                form.submit();
+            }
+        }
+
+        function concluirAtividade(atividadeId, event) {
+            event.stopPropagation();
+            if (confirm('Marcar esta atividade como concluída?')) {
+                const faseId = {{ fase_selecionada.id if fase_selecionada else 'null' }};
+                const cenarioId = {{ cenario_selecionado.id if cenario_selecionado else 'null' }};
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = "{{ url_for('fluxo_concluir_atividade', projeto_id=projeto.id) }}";
+                form.innerHTML = `
+                    <input type="hidden" name="atividade_id" value="${atividadeId}">
+                    <input type="hidden" name="fase_id" value="${faseId}">
+                    <input type="hidden" name="cenario_id" value="${cenarioId}">
+                `;
+                document.body.appendChild(form);
+                form.submit();
+            }
+        }
+
+        function adicionarFase() {
+            const nome = prompt('Nome da nova fase:');
+            if (nome && nome.trim() !== '') {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = "{{ url_for('fluxo', projeto_id=projeto.id) }}";
+                form.innerHTML = `<input type="hidden" name="fase" value="${nome}">`;
+                document.body.appendChild(form);
+                form.submit();
+            }
+        }
+
+        function adicionarCenario() {
+            const faseId = {{ fase_selecionada.id if fase_selecionada else 'null' }};
+            if (!faseId) {
+                alert('Selecione uma fase primeiro');
+                return;
+            }
+            const nome = prompt('Nome do novo cenário:');
+            if (nome && nome.trim() !== '') {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = "{{ url_for('fluxo', projeto_id=projeto.id) }}?fase=" + faseId;
+                form.innerHTML = `<input type="hidden" name="cenario" value="${nome}">`;
+                document.body.appendChild(form);
+                form.submit();
+            }
+        }
+
+        function adicionarAtividade() {
+            const faseId = {{ fase_selecionada.id if fase_selecionada else 'null' }};
+            const cenarioId = {{ cenario_selecionado.id if cenario_selecionado else 'null' }};
+            if (!cenarioId) {
+                alert('Selecione um cenário primeiro');
+                return;
+            }
+            const seq = prompt('Número sequencial:');
+            if (seq === null) return;
+            const desc = prompt('Descrição da atividade:');
+            if (desc === null) return;
+            const resp = prompt('Responsável (username):');
+            if (resp === null) return;
+            
+            if (seq && desc && resp) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = "{{ url_for('fluxo', projeto_id=projeto.id) }}?fase=" + faseId + "&cenario=" + cenarioId;
+                form.innerHTML = `
+                    <input type="hidden" name="numero_sequencial" value="${seq}">
+                    <input type="hidden" name="descricao" value="${desc}">
+                    <input type="hidden" name="responsavel" value="${resp}">
+                `;
+                document.body.appendChild(form);
+                form.submit();
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,7 +1,10 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-br">
 <head>
+    <meta charset="UTF-8">
     <title>Login - IMSIS</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
     <style>
         body { font-family: sans-serif; padding: 40px; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #f4f4f4; }
         .card { background: white; border: 1px solid #ddd; padding: 30px; border-radius: 8px; width: 300px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
@@ -20,10 +23,10 @@
     <div class="card">
         <h2>Login</h2>
         
-        {% with messages = get_flashed_messages() %}
+        {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
-            {% for message in messages %}
-                <div class="alert">{{ message }}</div>
+            {% for category, message in messages %}
+                <div class="alert {{ category }}">{{ message }}</div>
             {% endfor %}
         {% endif %}
         {% endwith %}
