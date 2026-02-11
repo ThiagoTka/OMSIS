@@ -326,6 +326,77 @@
             background-color: #c0392b;
         }
 
+        /* Tabs */
+        .tabs-container {
+            margin-bottom: 24px;
+        }
+
+        .tabs-header {
+            display: flex;
+            border-bottom: 2px solid var(--border);
+            margin-bottom: 0;
+        }
+
+        .tab-button {
+            padding: 12px 24px;
+            background: none;
+            border: none;
+            border-bottom: 3px solid transparent;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            transition: all 0.2s ease;
+            margin-bottom: -2px;
+        }
+
+        .tab-button:hover {
+            color: var(--primary);
+            background-color: rgba(52, 152, 219, 0.05);
+        }
+
+        .tab-button.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .btn-add-member {
+            padding: 8px 16px;
+            background-color: var(--success);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+        }
+
+        .btn-add-member:hover {
+            background-color: #27ae60;
+        }
+
+        .btn-remove {
+            padding: 6px 12px;
+            background-color: var(--danger);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85rem;
+        }
+
+        .btn-remove:hover {
+            background-color: #c0392b;
+        }
+
         @media (max-width: 768px) {
             .main-layout {
                 flex-direction: column;
@@ -349,6 +420,15 @@
 
             .form-grid {
                 grid-template-columns: 1fr;
+            }
+
+            .tabs-header {
+                flex-wrap: wrap;
+            }
+
+            .tab-button {
+                flex: 1;
+                min-width: 120px;
             }
         }
     </style>
@@ -381,13 +461,13 @@
                         </a>
                     </li>
                     <li class="sidebar-menu-item">
-                        <a href="javascript:void(0)" class="sidebar-menu-link">
+                        <a href="{{ url_for('licoes_aprendidas', projeto_id=projeto.id) }}" class="sidebar-menu-link">
                             <span class="sidebar-menu-icon">◉</span>
                             <span>Lições Aprendidas</span>
                         </a>
                     </li>
                     <li class="sidebar-menu-item">
-                        <a href="javascript:void(0)" class="sidebar-menu-link">
+                        <a href="{{ url_for('solicitacoes_mudanca', projeto_id=projeto.id) }}" class="sidebar-menu-link">
                             <span class="sidebar-menu-icon">⟳</span>
                             <span>Solicitações de Mudança</span>
                         </a>
@@ -426,93 +506,131 @@
                     {% endwith %}
                 </div>
 
-                <!-- Seção de Perfis -->
-                <div class="section-card">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <h2 class="section-title">Perfis de Acesso</h2>
-                        <button class="btn-save" onclick="abrirModalCriarPerfil()">+ Criar Novo Perfil</button>
+                <!-- Tabs -->
+                <div class="tabs-container">
+                    <div class="tabs-header">
+                        <button class="tab-button {% if tab_ativa == 'perfis' %}active{% endif %}" onclick="openTab(event, 'tab-perfis')">Perfis de Acesso</button>
+                        <button class="tab-button {% if tab_ativa == 'membros' %}active{% endif %}" onclick="openTab(event, 'tab-membros')">Membros do Projeto</button>
                     </div>
+                </div>
 
-                    <div class="perfis-grid">
-                        {% for perfil in perfis %}
-                        <div class="perfil-card">
-                            <h4>
-                                {{ perfil.nome }}
-                                {% if perfil.is_default %}
-                                <span class="perfil-badge">Padrão</span>
-                                {% else %}
-                                <span>
-                                    <button class="btn-edit" onclick="abrirModalEditarPerfil({{ perfil.id }}, '{{ perfil.nome }}', {{ perfil.pode_criar_atividade|lower }}, {{ perfil.pode_editar_atividade|lower }}, {{ perfil.pode_excluir_atividade|lower }}, {{ perfil.pode_concluir_qualquer_atividade|lower }}, {{ perfil.pode_editar_projeto|lower }}, {{ perfil.pode_gerenciar_membros|lower }})">✏️</button>
-                                    <button class="btn-delete" onclick="excluirPerfil({{ perfil.id }}, '{{ perfil.nome }}')">🗑️</button>
-                                </span>
-                                {% endif %}
-                            </h4>
-                            <div class="permissao-item {% if perfil.pode_criar_atividade %}enabled{% else %}disabled{% endif %}">
-                                {% if perfil.pode_criar_atividade %}✓{% else %}✗{% endif %} Criar atividades
-                            </div>
-                            <div class="permissao-item {% if perfil.pode_editar_atividade %}enabled{% else %}disabled{% endif %}">
-                                {% if perfil.pode_editar_atividade %}✓{% else %}✗{% endif %} Editar atividades
-                            </div>
-                            <div class="permissao-item {% if perfil.pode_excluir_atividade %}enabled{% else %}disabled{% endif %}">
-                                {% if perfil.pode_excluir_atividade %}✓{% else %}✗{% endif %} Excluir atividades
-                            </div>
-                            <div class="permissao-item {% if perfil.pode_concluir_qualquer_atividade %}enabled{% else %}disabled{% endif %}">
-                                {% if perfil.pode_concluir_qualquer_atividade %}✓{% else %}✗{% endif %} Concluir/reabrir qualquer atividade
-                            </div>
-                            <div class="permissao-item {% if perfil.pode_editar_projeto %}enabled{% else %}disabled{% endif %}">
-                                {% if perfil.pode_editar_projeto %}✓{% else %}✗{% endif %} Editar configurações do projeto
-                            </div>
-                            <div class="permissao-item {% if perfil.pode_gerenciar_membros %}enabled{% else %}disabled{% endif %}">
-                                {% if perfil.pode_gerenciar_membros %}✓{% else %}✗{% endif %} Gerenciar membros e perfis
-                            </div>
+                <!-- Tab: Perfis de Acesso -->
+                <div id="tab-perfis" class="tab-content {% if tab_ativa == 'perfis' %}active{% endif %}">
+                    <!-- Seção de Perfis -->
+                    <div class="section-card">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <h2 class="section-title">Perfis de Acesso</h2>
+                            <button class="btn-save" onclick="abrirModalCriarPerfil()">+ Criar Novo Perfil</button>
                         </div>
-                        {% endfor %}
+
+                        <div class="perfis-grid">
+                            {% for perfil in perfis %}
+                            <div class="perfil-card">
+                                <h4>
+                                    {{ perfil.nome }}
+                                    {% if perfil.is_default %}
+                                    <span class="perfil-badge">Padrão</span>
+                                    {% else %}
+                                    <span>
+                                        <button class="btn-edit" onclick="abrirModalEditarPerfil({{ perfil.id }}, '{{ perfil.nome }}', {{ perfil.pode_criar_atividade|lower }}, {{ perfil.pode_editar_atividade|lower }}, {{ perfil.pode_excluir_atividade|lower }}, {{ perfil.pode_concluir_qualquer_atividade|lower }}, {{ perfil.pode_editar_projeto|lower }}, {{ perfil.pode_gerenciar_membros|lower }}, {{ perfil.pode_criar_licao|lower }}, {{ perfil.pode_editar_licao|lower }}, {{ perfil.pode_excluir_licao|lower }}, {{ perfil.pode_criar_mudanca|lower }}, {{ perfil.pode_editar_mudanca|lower }}, {{ perfil.pode_excluir_mudanca|lower }})">✏️</button>
+                                        <button class="btn-delete" onclick="excluirPerfil({{ perfil.id }}, '{{ perfil.nome }}')">🗑️</button>
+                                    </span>
+                                    {% endif %}
+                                </h4>
+                                <div class="permissao-item {% if perfil.pode_criar_atividade %}enabled{% else %}disabled{% endif %}">
+                                    {% if perfil.pode_criar_atividade %}✓{% else %}✗{% endif %} Criar atividades
+                                </div>
+                                <div class="permissao-item {% if perfil.pode_editar_atividade %}enabled{% else %}disabled{% endif %}">
+                                    {% if perfil.pode_editar_atividade %}✓{% else %}✗{% endif %} Editar atividades
+                                </div>
+                                <div class="permissao-item {% if perfil.pode_excluir_atividade %}enabled{% else %}disabled{% endif %}">
+                                    {% if perfil.pode_excluir_atividade %}✓{% else %}✗{% endif %} Excluir atividades
+                                </div>
+                                <div class="permissao-item {% if perfil.pode_concluir_qualquer_atividade %}enabled{% else %}disabled{% endif %}">
+                                    {% if perfil.pode_concluir_qualquer_atividade %}✓{% else %}✗{% endif %} Concluir/reabrir qualquer atividade
+                                </div>
+                                <div class="permissao-item {% if perfil.pode_editar_projeto %}enabled{% else %}disabled{% endif %}">
+                                    {% if perfil.pode_editar_projeto %}✓{% else %}✗{% endif %} Editar configurações do projeto
+                                </div>
+                                <div class="permissao-item {% if perfil.pode_gerenciar_membros %}enabled{% else %}disabled{% endif %}">
+                                    {% if perfil.pode_gerenciar_membros %}✓{% else %}✗{% endif %} Gerenciar membros e perfis
+                                </div>
+                                <div class="permissao-item {% if perfil.pode_criar_licao %}enabled{% else %}disabled{% endif %}">
+                                    {% if perfil.pode_criar_licao %}✓{% else %}✗{% endif %} Criar lições aprendidas
+                                </div>
+                                <div class="permissao-item {% if perfil.pode_editar_licao %}enabled{% else %}disabled{% endif %}">
+                                    {% if perfil.pode_editar_licao %}✓{% else %}✗{% endif %} Editar lições aprendidas
+                                </div>
+                                <div class="permissao-item {% if perfil.pode_excluir_licao %}enabled{% else %}disabled{% endif %}">
+                                    {% if perfil.pode_excluir_licao %}✓{% else %}✗{% endif %} Excluir lições aprendidas
+                                </div>
+                                <div class="permissao-item {% if perfil.pode_criar_mudanca %}enabled{% else %}disabled{% endif %}">
+                                    {% if perfil.pode_criar_mudanca %}✓{% else %}✗{% endif %} Criar solicitações de mudança
+                                </div>
+                                <div class="permissao-item {% if perfil.pode_editar_mudanca %}enabled{% else %}disabled{% endif %}">
+                                    {% if perfil.pode_editar_mudanca %}✓{% else %}✗{% endif %} Editar solicitações de mudança
+                                </div>
+                                <div class="permissao-item {% if perfil.pode_excluir_mudanca %}enabled{% else %}disabled{% endif %}">
+                                    {% if perfil.pode_excluir_mudanca %}✓{% else %}✗{% endif %} Excluir solicitações de mudança
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
                     </div>
                 </div>
 
-                <!-- Seção de Membros -->
-                <div class="section-card">
-                    <h2 class="section-title">Membros do Projeto</h2>
-                    <table class="membros-table">
-                        <thead>
-                            <tr>
-                                <th>Usuário</th>
-                                <th>Email</th>
-                                <th>Perfil Atual</th>
-                                <th>Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for item in membros_com_perfil %}
-                            <tr>
-                                <td><strong>{{ item.user.username }}</strong></td>
-                                <td>{{ item.user.email }}</td>
-                                <td>
-                                    {% if item.perfil %}
-                                        {{ item.perfil.nome }}
-                                    {% else %}
-                                        <em>Sem perfil</em>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    <form method="POST" style="display: inline-block;">
-                                        <input type="hidden" name="action" value="atribuir_perfil">
-                                        <input type="hidden" name="membro_id" value="{{ item.membro.id }}">
-                                        <select name="perfil_id" class="select-perfil" onchange="this.form.submit()">
-                                            <option value="">Alterar perfil...</option>
-                                            {% for perfil in perfis %}
-                                            <option value="{{ perfil.id }}" {% if item.perfil and item.perfil.id == perfil.id %}selected{% endif %}>
-                                                {{ perfil.nome }}
-                                            </option>
-                                            {% endfor %}
-                                        </select>
-                                    </form>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+                <!-- Tab: Membros do Projeto -->
+                <div id="tab-membros" class="tab-content {% if tab_ativa == 'membros' %}active{% endif %}">
+                    <!-- Seção de Membros -->
+                    <div class="section-card">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <h2 class="section-title">Membros do Projeto</h2>
+                            <button class="btn-add-member" onclick="abrirModalAdicionarMembro()">+ Adicionar Membro</button>
+                        </div>
+
+                        <table class="membros-table">
+                            <thead>
+                                <tr>
+                                    <th>Usuário</th>
+                                    <th>Email</th>
+                                    <th>Perfil Atual</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in membros_com_perfil %}
+                                <tr>
+                                    <td><strong>{{ item.user.username }}</strong></td>
+                                    <td>{{ item.user.email }}</td>
+                                    <td>
+                                        {% if item.perfil %}
+                                            {{ item.perfil.nome }}
+                                        {% else %}
+                                            <em>Sem perfil</em>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <form method="POST" style="display: inline-block;">
+                                            <input type="hidden" name="action" value="atribuir_perfil">
+                                            <input type="hidden" name="membro_id" value="{{ item.membro.id }}">
+                                            <select name="perfil_id" class="select-perfil" onchange="this.form.submit()">
+                                                <option value="">Alterar perfil...</option>
+                                                {% for perfil in perfis %}
+                                                <option value="{{ perfil.id }}" {% if item.perfil and item.perfil.id == perfil.id %}selected{% endif %}>
+                                                    {{ perfil.nome }}
+                                                </option>
+                                                {% endfor %}
+                                            </select>
+                                        </form>
+                                        <button class="btn-remove" onclick="removerMembro({{ item.membro.id }}, '{{ item.user.username }}')">Remover</button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
+
             </div>
         </div>
     </div>
@@ -555,6 +673,30 @@
                 <div class="checkbox-group">
                     <input type="checkbox" id="gerenciar_membros" name="pode_gerenciar_membros">
                     <label for="gerenciar_membros">Gerenciar membros e perfis</label>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="criar_licao" name="pode_criar_licao">
+                    <label for="criar_licao">Criar lições aprendidas</label>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="editar_licao" name="pode_editar_licao">
+                    <label for="editar_licao">Editar lições aprendidas</label>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="excluir_licao" name="pode_excluir_licao">
+                    <label for="excluir_licao">Excluir lições aprendidas</label>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="criar_mudanca" name="pode_criar_mudanca">
+                    <label for="criar_mudanca">Criar solicitações de mudança</label>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="editar_mudanca" name="pode_editar_mudanca">
+                    <label for="editar_mudanca">Editar solicitações de mudança</label>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="excluir_mudanca" name="pode_excluir_mudanca">
+                    <label for="excluir_mudanca">Excluir solicitações de mudança</label>
                 </div>
                 <button type="submit" class="btn-save" style="margin-top: 20px; width: 100%;">Criar Perfil</button>
             </form>
@@ -601,12 +743,89 @@
                     <input type="checkbox" id="edit_gerenciar_membros" name="pode_gerenciar_membros">
                     <label for="edit_gerenciar_membros">Gerenciar membros e perfis</label>
                 </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="edit_criar_licao" name="pode_criar_licao">
+                    <label for="edit_criar_licao">Criar lições aprendidas</label>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="edit_editar_licao" name="pode_editar_licao">
+                    <label for="edit_editar_licao">Editar lições aprendidas</label>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="edit_excluir_licao" name="pode_excluir_licao">
+                    <label for="edit_excluir_licao">Excluir lições aprendidas</label>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="edit_criar_mudanca" name="pode_criar_mudanca">
+                    <label for="edit_criar_mudanca">Criar solicitações de mudança</label>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="edit_editar_mudanca" name="pode_editar_mudanca">
+                    <label for="edit_editar_mudanca">Editar solicitações de mudança</label>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="edit_excluir_mudanca" name="pode_excluir_mudanca">
+                    <label for="edit_excluir_mudanca">Excluir solicitações de mudança</label>
+                </div>
                 <button type="submit" class="btn-save" style="margin-top: 20px; width: 100%;">Salvar Alterações</button>
             </form>
         </div>
     </div>
 
+    <!-- Modal Adicionar Membro -->
+    <div id="modalAdicionarMembro" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Adicionar Membro ao Projeto</h3>
+                <button class="btn-close" onclick="fecharModalAdicionarMembro()">×</button>
+            </div>
+            <form method="POST">
+                <input type="hidden" name="action" value="adicionar_membro">
+                <div class="form-group">
+                    <label>Selecionar Usuário</label>
+                    <select name="user_id" class="select-perfil" required style="width: 100%; padding: 10px;">
+                        <option value="">Selecione um usuário...</option>
+                        {% for user in usuarios_disponiveis %}
+                        <option value="{{ user.id }}">{{ user.username }} ({{ user.email }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group" style="margin-top: 16px;">
+                    <label>Atribuir Perfil</label>
+                    <select name="perfil_id" class="select-perfil" required style="width: 100%; padding: 10px;">
+                        <option value="">Selecione um perfil...</option>
+                        {% for perfil in perfis %}
+                        <option value="{{ perfil.id }}">{{ perfil.nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <button type="submit" class="btn-add-member" style="margin-top: 20px; width: 100%;">Adicionar Membro</button>
+            </form>
+        </div>
+    </div>
+
     <script>
+        // Tab functionality
+        function openTab(evt, tabName) {
+            var i, tabcontent, tabbuttons;
+            
+            // Hide all tab contents
+            tabcontent = document.getElementsByClassName("tab-content");
+            for (i = 0; i < tabcontent.length; i++) {
+                tabcontent[i].classList.remove("active");
+            }
+            
+            // Remove active class from all tab buttons
+            tabbuttons = document.getElementsByClassName("tab-button");
+            for (i = 0; i < tabbuttons.length; i++) {
+                tabbuttons[i].classList.remove("active");
+            }
+            
+            // Show the current tab and add active class to the button
+            document.getElementById(tabName).classList.add("active");
+            evt.currentTarget.classList.add("active");
+        }
+
         function abrirModalCriarPerfil() {
             document.getElementById('modalCriarPerfil').classList.add('active');
         }
@@ -615,7 +834,7 @@
             document.getElementById('modalCriarPerfil').classList.remove('active');
         }
 
-        function abrirModalEditarPerfil(id, nome, criar, editar, excluir, concluir, editarProj, gerenciar) {
+        function abrirModalEditarPerfil(id, nome, criar, editar, excluir, concluir, editarProj, gerenciar, criarLicao, editarLicao, excluirLicao, criarMudanca, editarMudanca, excluirMudanca) {
             document.getElementById('edit_perfil_id').value = id;
             document.getElementById('edit_nome_perfil').value = nome;
             document.getElementById('edit_criar_atividade').checked = criar;
@@ -624,11 +843,25 @@
             document.getElementById('edit_concluir_qualquer').checked = concluir;
             document.getElementById('edit_editar_projeto').checked = editarProj;
             document.getElementById('edit_gerenciar_membros').checked = gerenciar;
+            document.getElementById('edit_criar_licao').checked = criarLicao;
+            document.getElementById('edit_editar_licao').checked = editarLicao;
+            document.getElementById('edit_excluir_licao').checked = excluirLicao;
+            document.getElementById('edit_criar_mudanca').checked = criarMudanca;
+            document.getElementById('edit_editar_mudanca').checked = editarMudanca;
+            document.getElementById('edit_excluir_mudanca').checked = excluirMudanca;
             document.getElementById('modalEditarPerfil').classList.add('active');
         }
 
         function fecharModalEditarPerfil() {
             document.getElementById('modalEditarPerfil').classList.remove('active');
+        }
+
+        function abrirModalAdicionarMembro() {
+            document.getElementById('modalAdicionarMembro').classList.add('active');
+        }
+
+        function fecharModalAdicionarMembro() {
+            document.getElementById('modalAdicionarMembro').classList.remove('active');
         }
 
         function excluirPerfil(id, nome) {
@@ -638,6 +871,19 @@
                 form.innerHTML = `
                     <input type="hidden" name="action" value="excluir_perfil">
                     <input type="hidden" name="perfil_id" value="${id}">
+                `;
+                document.body.appendChild(form);
+                form.submit();
+            }
+        }
+
+        function removerMembro(membroId, username) {
+            if (confirm('Tem certeza que deseja remover o membro "' + username + '" do projeto?')) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.innerHTML = `
+                    <input type="hidden" name="action" value="remover_membro">
+                    <input type="hidden" name="membro_id" value="${membroId}">
                 `;
                 document.body.appendChild(form);
                 form.submit();
@@ -654,6 +900,12 @@
         document.getElementById('modalEditarPerfil').addEventListener('click', function(e) {
             if (e.target === this) {
                 fecharModalEditarPerfil();
+            }
+        });
+
+        document.getElementById('modalAdicionarMembro').addEventListener('click', function(e) {
+            if (e.target === this) {
+                fecharModalAdicionarMembro();
             }
         });
 

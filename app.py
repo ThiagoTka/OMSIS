@@ -126,6 +126,55 @@ class Cenario(db.Model):
     fase = db.relationship("Fase", backref=db.backref("cenarios", lazy=True))
 
 
+class LicaoAprendida(db.Model):
+    __tablename__ = "licoes_aprendidas"
+
+    id = db.Column(db.Integer, primary_key=True)
+    projeto_id = db.Column(db.Integer, db.ForeignKey("projetos.id"), nullable=False)
+    fase_id = db.Column(db.Integer, db.ForeignKey("fases.id"), nullable=True)
+    categoria = db.Column(db.String(100))  # Ex: Técnica, Gestão, Comunicação
+    tipo = db.Column(db.String(50))  # Ex: Sucesso, Problema, Oportunidade
+    descricao = db.Column(db.Text, nullable=False)
+    causa_raiz = db.Column(db.Text)
+    impacto = db.Column(db.Text)
+    acao_tomada = db.Column(db.Text)
+    recomendacao = db.Column(db.Text)
+    responsavel = db.Column(db.String(100))
+    status = db.Column(db.String(50))  # Ex: Registrada, Em Análise, Aplicada
+    aplicavel_futuros = db.Column(db.Boolean, default=True)
+    data_registro = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    projeto = db.relationship("Projeto", backref=db.backref("licoes_aprendidas", lazy=True))
+    fase = db.relationship("Fase", backref=db.backref("licoes_aprendidas", lazy=True))
+
+
+class SolicitacaoMudanca(db.Model):
+    __tablename__ = "solicitacoes_mudanca"
+
+    id = db.Column(db.Integer, primary_key=True)
+    projeto_id = db.Column(db.Integer, db.ForeignKey("projetos.id"), nullable=False)
+    data_solicitacao = db.Column(db.DateTime, default=datetime.utcnow)
+    solicitante = db.Column(db.String(100))
+    area_solicitante = db.Column(db.String(100))
+    descricao = db.Column(db.Text, nullable=False)
+    justificativa = db.Column(db.Text)
+    tipo_mudanca = db.Column(db.String(50))  # Escopo, Legal, Técnica, Melhoria, Correção, Integração
+    impacto_prazo = db.Column(db.String(100))
+    impacto_custo = db.Column(db.String(100))
+    impacto_escopo = db.Column(db.String(50))  # Baixo, Médio, Alto
+    impacto_recursos = db.Column(db.String(200))
+    impacto_risco = db.Column(db.String(50))  # Baixo, Médio, Alto
+    prioridade = db.Column(db.String(50))  # Baixa, Média, Alta, Crítica
+    recomendacao_pm = db.Column(db.String(50))  # Aprovar, Rejeitar, Postergar
+    status = db.Column(db.String(50))  # Em análise, Aprovada, Rejeitada, Em implementação, Concluída
+    aprovador = db.Column(db.String(100))
+    data_decisao = db.Column(db.DateTime)
+    data_implementacao = db.Column(db.DateTime)
+    observacoes = db.Column(db.Text)
+    
+    projeto = db.relationship("Projeto", backref=db.backref("solicitacoes_mudanca", lazy=True))
+
+
 class Perfil(db.Model):
     __tablename__ = "perfis"
 
@@ -141,6 +190,16 @@ class Perfil(db.Model):
     pode_concluir_qualquer_atividade = db.Column(db.Boolean, default=False)
     pode_editar_projeto = db.Column(db.Boolean, default=False)
     pode_gerenciar_membros = db.Column(db.Boolean, default=False)
+    
+    # Permissões de Lições Aprendidas
+    pode_criar_licao = db.Column(db.Boolean, default=False)
+    pode_editar_licao = db.Column(db.Boolean, default=False)
+    pode_excluir_licao = db.Column(db.Boolean, default=False)
+    
+    # Permissões de Solicitações de Mudança
+    pode_criar_mudanca = db.Column(db.Boolean, default=False)
+    pode_editar_mudanca = db.Column(db.Boolean, default=False)
+    pode_excluir_mudanca = db.Column(db.Boolean, default=False)
     
     is_default = db.Column(db.Boolean, default=False)  # Para perfis padrão
 
@@ -410,6 +469,12 @@ def projetos():
                 pode_concluir_qualquer_atividade=True,
                 pode_editar_projeto=True,
                 pode_gerenciar_membros=True,
+                pode_criar_licao=True,
+                pode_editar_licao=True,
+                pode_excluir_licao=True,
+                pode_criar_mudanca=True,
+                pode_editar_mudanca=True,
+                pode_excluir_mudanca=True,
                 is_default=True
             )
             perfil_membro = Perfil(
@@ -421,6 +486,12 @@ def projetos():
                 pode_concluir_qualquer_atividade=False,
                 pode_editar_projeto=False,
                 pode_gerenciar_membros=False,
+                pode_criar_licao=True,
+                pode_editar_licao=True,
+                pode_excluir_licao=False,
+                pode_criar_mudanca=True,
+                pode_editar_mudanca=True,
+                pode_excluir_mudanca=False,
                 is_default=True
             )
             db.session.add(perfil_admin)
@@ -1281,6 +1352,42 @@ def gerenciar_acessos(projeto_id):
     if not has_permission(projeto_id, "pode_gerenciar_membros"):
         abort(403)
     
+    # Adicionar membro ao projeto
+    if request.method == "POST" and request.form.get("action") == "adicionar_membro":
+        user_id = request.form.get("user_id")
+        perfil_id = request.form.get("perfil_id")
+        
+        if user_id and perfil_id:
+            # Verificar se o usuário já não é membro
+            membro_existente = ProjetoMembro.query.filter_by(projeto_id=projeto_id, user_id=int(user_id)).first()
+            if membro_existente:
+                flash("Usuário já é membro deste projeto", "error")
+            else:
+                # Adicionar como membro
+                novo_membro = ProjetoMembro(projeto_id=projeto_id, user_id=int(user_id))
+                db.session.add(novo_membro)
+                db.session.flush()  # Para obter o ID do membro
+                
+                # Atribuir perfil
+                db.session.add(MembroPerfil(projeto_membro_id=novo_membro.id, perfil_id=int(perfil_id)))
+                db.session.commit()
+                flash("Membro adicionado com sucesso", "success")
+        return redirect(url_for("gerenciar_acessos", projeto_id=projeto_id, tab="membros"))
+    
+    # Remover membro do projeto
+    if request.method == "POST" and request.form.get("action") == "remover_membro":
+        membro_id = request.form.get("membro_id")
+        if membro_id:
+            membro = ProjetoMembro.query.get(int(membro_id))
+            if membro and membro.projeto_id == projeto_id:
+                # Remover associações de perfil
+                MembroPerfil.query.filter_by(projeto_membro_id=membro.id).delete()
+                # Remover membro
+                db.session.delete(membro)
+                db.session.commit()
+                flash("Membro removido com sucesso", "success")
+        return redirect(url_for("gerenciar_acessos", projeto_id=projeto_id, tab="membros"))
+    
     # Criar novo perfil
     if request.method == "POST" and request.form.get("action") == "criar_perfil":
         nome_perfil = request.form.get("nome_perfil")
@@ -1294,6 +1401,12 @@ def gerenciar_acessos(projeto_id):
                 pode_concluir_qualquer_atividade=request.form.get("pode_concluir_qualquer_atividade") == "on",
                 pode_editar_projeto=request.form.get("pode_editar_projeto") == "on",
                 pode_gerenciar_membros=request.form.get("pode_gerenciar_membros") == "on",
+                pode_criar_licao=request.form.get("pode_criar_licao") == "on",
+                pode_editar_licao=request.form.get("pode_editar_licao") == "on",
+                pode_excluir_licao=request.form.get("pode_excluir_licao") == "on",
+                pode_criar_mudanca=request.form.get("pode_criar_mudanca") == "on",
+                pode_editar_mudanca=request.form.get("pode_editar_mudanca") == "on",
+                pode_excluir_mudanca=request.form.get("pode_excluir_mudanca") == "on",
                 is_default=False
             )
             db.session.add(novo_perfil)
@@ -1312,7 +1425,7 @@ def gerenciar_acessos(projeto_id):
             db.session.add(MembroPerfil(projeto_membro_id=int(membro_id), perfil_id=int(perfil_id)))
             db.session.commit()
             flash("Perfil atribuído com sucesso", "success")
-        return redirect(url_for("gerenciar_acessos", projeto_id=projeto_id))
+        return redirect(url_for("gerenciar_acessos", projeto_id=projeto_id, tab="membros"))
     
     # Editar perfil
     if request.method == "POST" and request.form.get("action") == "editar_perfil":
@@ -1325,6 +1438,12 @@ def gerenciar_acessos(projeto_id):
             perfil.pode_concluir_qualquer_atividade = request.form.get("pode_concluir_qualquer_atividade") == "on"
             perfil.pode_editar_projeto = request.form.get("pode_editar_projeto") == "on"
             perfil.pode_gerenciar_membros = request.form.get("pode_gerenciar_membros") == "on"
+            perfil.pode_criar_licao = request.form.get("pode_criar_licao") == "on"
+            perfil.pode_editar_licao = request.form.get("pode_editar_licao") == "on"
+            perfil.pode_excluir_licao = request.form.get("pode_excluir_licao") == "on"
+            perfil.pode_criar_mudanca = request.form.get("pode_criar_mudanca") == "on"
+            perfil.pode_editar_mudanca = request.form.get("pode_editar_mudanca") == "on"
+            perfil.pode_excluir_mudanca = request.form.get("pode_excluir_mudanca") == "on"
             db.session.commit()
             flash("Perfil atualizado com sucesso", "success")
         return redirect(url_for("gerenciar_acessos", projeto_id=projeto_id))
@@ -1360,11 +1479,233 @@ def gerenciar_acessos(projeto_id):
             'perfil': perfil_atual
         })
     
+    # Obter usuários que ainda não são membros do projeto
+    membros_ids = [m.user_id for m in membros]
+    usuarios_disponiveis = User.query.filter(~User.id.in_(membros_ids)).all() if membros_ids else User.query.all()
+    
+    # Verificar qual aba deve ser ativa
+    tab_ativa = request.args.get('tab', 'perfis')
+    
     return render_template(
         "acessos.html",
         projeto=projeto,
         perfis=perfis,
         membros_com_perfil=membros_com_perfil,
+        usuarios_disponiveis=usuarios_disponiveis,
+        usuario_atual=current_user.username,
+        tab_ativa=tab_ativa
+    )
+
+
+@app.route("/projetos/<int:projeto_id>/licoes", methods=["GET", "POST"])
+@login_required
+def licoes_aprendidas(projeto_id):
+    projeto = Projeto.query.get_or_404(projeto_id)
+    if not is_project_member(projeto_id):
+        abort(403)
+    
+    # Criar nova lição
+    if request.method == "POST" and request.form.get("action") == "criar":
+        if not has_permission(projeto_id, "pode_criar_licao"):
+            abort(403)
+        
+        nova_licao = LicaoAprendida(
+            projeto_id=projeto_id,
+            fase_id=request.form.get("fase_id") if request.form.get("fase_id") else None,
+            categoria=request.form.get("categoria"),
+            tipo=request.form.get("tipo"),
+            descricao=request.form.get("descricao"),
+            causa_raiz=request.form.get("causa_raiz"),
+            impacto=request.form.get("impacto"),
+            acao_tomada=request.form.get("acao_tomada"),
+            recomendacao=request.form.get("recomendacao"),
+            responsavel=request.form.get("responsavel"),
+            status=request.form.get("status"),
+            aplicavel_futuros=request.form.get("aplicavel_futuros") == "on"
+        )
+        db.session.add(nova_licao)
+        db.session.commit()
+        flash("Lição aprendida registrada com sucesso", "success")
+        return redirect(url_for("licoes_aprendidas", projeto_id=projeto_id))
+    
+    # Editar lição
+    if request.method == "POST" and request.form.get("action") == "editar":
+        if not has_permission(projeto_id, "pode_editar_licao"):
+            abort(403)
+        
+        licao_id = request.form.get("licao_id")
+        licao = LicaoAprendida.query.get(licao_id)
+        if licao and licao.projeto_id == projeto_id:
+            licao.fase_id = request.form.get("fase_id") if request.form.get("fase_id") else None
+            licao.categoria = request.form.get("categoria")
+            licao.tipo = request.form.get("tipo")
+            licao.descricao = request.form.get("descricao")
+            licao.causa_raiz = request.form.get("causa_raiz")
+            licao.impacto = request.form.get("impacto")
+            licao.acao_tomada = request.form.get("acao_tomada")
+            licao.recomendacao = request.form.get("recomendacao")
+            licao.responsavel = request.form.get("responsavel")
+            licao.status = request.form.get("status")
+            licao.aplicavel_futuros = request.form.get("aplicavel_futuros") == "on"
+            db.session.commit()
+            flash("Lição aprendida atualizada com sucesso", "success")
+        return redirect(url_for("licoes_aprendidas", projeto_id=projeto_id))
+    
+    # Excluir lição
+    if request.method == "POST" and request.form.get("action") == "excluir":
+        if not has_permission(projeto_id, "pode_excluir_licao"):
+            abort(403)
+        
+        licao_id = request.form.get("licao_id")
+        licao = LicaoAprendida.query.get(licao_id)
+        if licao and licao.projeto_id == projeto_id:
+            db.session.delete(licao)
+            db.session.commit()
+            flash("Lição aprendida excluída com sucesso", "success")
+        return redirect(url_for("licoes_aprendidas", projeto_id=projeto_id))
+    
+    # Obter dados
+    licoes = LicaoAprendida.query.filter_by(projeto_id=projeto_id).order_by(LicaoAprendida.data_registro.desc()).all()
+    fases = Fase.query.filter_by(projeto_id=projeto_id).all()
+    
+    pode_criar = has_permission(projeto_id, "pode_criar_licao")
+    pode_editar = has_permission(projeto_id, "pode_editar_licao")
+    pode_excluir = has_permission(projeto_id, "pode_excluir_licao")
+    pode_gerenciar_membros = has_permission(projeto_id, "pode_gerenciar_membros")
+    
+    return render_template(
+        "licoes.html",
+        projeto=projeto,
+        licoes=licoes,
+        fases=fases,
+        pode_criar=pode_criar,
+        pode_editar=pode_editar,
+        pode_excluir=pode_excluir,
+        pode_gerenciar_membros=pode_gerenciar_membros,
+        usuario_atual=current_user.username
+    )
+
+
+@app.route("/projetos/<int:projeto_id>/mudancas", methods=["GET", "POST"])
+@login_required
+def solicitacoes_mudanca(projeto_id):
+    projeto = Projeto.query.get_or_404(projeto_id)
+    
+    # Verificar se o usuário é membro do projeto
+    membro = ProjetoMembro.query.filter_by(projeto_id=projeto_id, user_id=current_user.id).first()
+    if not membro:
+        abort(403)
+
+    invalid_date = object()
+
+    def parse_date_field(field_name, label):
+        value = request.form.get(field_name)
+        if not value:
+            return None
+        try:
+            return datetime.strptime(value, "%Y-%m-%d")
+        except ValueError:
+            flash(f"Data inválida em {label}. Use o formato AAAA-MM-DD.", "danger")
+            return invalid_date
+    
+    # Criar solicitação de mudança
+    if request.method == "POST" and request.form.get("action") == "criar":
+        if not has_permission(projeto_id, "pode_criar_mudanca"):
+            abort(403)
+
+        data_decisao = parse_date_field("data_decisao", "Data da Decisão")
+        data_implementacao = parse_date_field("data_implementacao", "Data da Implementação")
+        if data_decisao is invalid_date or data_implementacao is invalid_date:
+            return redirect(url_for("solicitacoes_mudanca", projeto_id=projeto_id))
+        
+        solicitacao = SolicitacaoMudanca(
+            projeto_id=projeto_id,
+            solicitante=request.form.get("solicitante"),
+            area_solicitante=request.form.get("area_solicitante"),
+            descricao=request.form.get("descricao"),
+            justificativa=request.form.get("justificativa"),
+            tipo_mudanca=request.form.get("tipo_mudanca"),
+            impacto_prazo=request.form.get("impacto_prazo"),
+            impacto_custo=request.form.get("impacto_custo"),
+            impacto_escopo=request.form.get("impacto_escopo"),
+            impacto_recursos=request.form.get("impacto_recursos"),
+            impacto_risco=request.form.get("impacto_risco"),
+            prioridade=request.form.get("prioridade"),
+            recomendacao_pm=request.form.get("recomendacao_pm"),
+            status=request.form.get("status", "Em análise"),
+            aprovador=request.form.get("aprovador"),
+            data_decisao=data_decisao,
+            data_implementacao=data_implementacao,
+            observacoes=request.form.get("observacoes")
+        )
+        db.session.add(solicitacao)
+        db.session.commit()
+        flash("Solicitação de mudança criada com sucesso", "success")
+        return redirect(url_for("solicitacoes_mudanca", projeto_id=projeto_id))
+    
+    # Editar solicitação de mudança
+    if request.method == "POST" and request.form.get("action") == "editar":
+        if not has_permission(projeto_id, "pode_editar_mudanca"):
+            abort(403)
+
+        data_decisao = parse_date_field("data_decisao", "Data da Decisão")
+        data_implementacao = parse_date_field("data_implementacao", "Data da Implementação")
+        if data_decisao is invalid_date or data_implementacao is invalid_date:
+            return redirect(url_for("solicitacoes_mudanca", projeto_id=projeto_id))
+        
+        mudanca_id = request.form.get("mudanca_id")
+        solicitacao = SolicitacaoMudanca.query.get(mudanca_id)
+        if solicitacao and solicitacao.projeto_id == projeto_id:
+            solicitacao.solicitante = request.form.get("solicitante")
+            solicitacao.area_solicitante = request.form.get("area_solicitante")
+            solicitacao.descricao = request.form.get("descricao")
+            solicitacao.justificativa = request.form.get("justificativa")
+            solicitacao.tipo_mudanca = request.form.get("tipo_mudanca")
+            solicitacao.impacto_prazo = request.form.get("impacto_prazo")
+            solicitacao.impacto_custo = request.form.get("impacto_custo")
+            solicitacao.impacto_escopo = request.form.get("impacto_escopo")
+            solicitacao.impacto_recursos = request.form.get("impacto_recursos")
+            solicitacao.impacto_risco = request.form.get("impacto_risco")
+            solicitacao.prioridade = request.form.get("prioridade")
+            solicitacao.recomendacao_pm = request.form.get("recomendacao_pm")
+            solicitacao.status = request.form.get("status")
+            solicitacao.aprovador = request.form.get("aprovador")
+            solicitacao.data_decisao = data_decisao
+            solicitacao.data_implementacao = data_implementacao
+            solicitacao.observacoes = request.form.get("observacoes")
+            db.session.commit()
+            flash("Solicitação de mudança atualizada com sucesso", "success")
+        return redirect(url_for("solicitacoes_mudanca", projeto_id=projeto_id))
+    
+    # Excluir solicitação de mudança
+    if request.method == "POST" and request.form.get("action") == "excluir":
+        if not has_permission(projeto_id, "pode_excluir_mudanca"):
+            abort(403)
+        
+        mudanca_id = request.form.get("mudanca_id")
+        solicitacao = SolicitacaoMudanca.query.get(mudanca_id)
+        if solicitacao and solicitacao.projeto_id == projeto_id:
+            db.session.delete(solicitacao)
+            db.session.commit()
+            flash("Solicitação de mudança excluída com sucesso", "success")
+        return redirect(url_for("solicitacoes_mudanca", projeto_id=projeto_id))
+    
+    # Obter dados
+    mudancas = SolicitacaoMudanca.query.filter_by(projeto_id=projeto_id).order_by(SolicitacaoMudanca.data_solicitacao.desc()).all()
+    
+    pode_criar = has_permission(projeto_id, "pode_criar_mudanca")
+    pode_editar = has_permission(projeto_id, "pode_editar_mudanca")
+    pode_excluir = has_permission(projeto_id, "pode_excluir_mudanca")
+    pode_gerenciar_membros = has_permission(projeto_id, "pode_gerenciar_membros")
+    
+    return render_template(
+        "mudancas.html",
+        projeto=projeto,
+        mudancas=mudancas,
+        pode_criar=pode_criar,
+        pode_editar=pode_editar,
+        pode_excluir=pode_excluir,
+        pode_gerenciar_membros=pode_gerenciar_membros,
         usuario_atual=current_user.username
     )
 

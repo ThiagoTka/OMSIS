@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Lições Aprendidas - {{ projeto.nome }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+    <style>
+        .main-layout {
+            display: flex;
+            gap: 0;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            width: 250px;
+            background-color: var(--bg-card);
+            border-right: 1px solid var(--border);
+            padding: 20px 0;
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            overflow-y: auto;
+        }
+
+        .sidebar-header {
+            padding: 0 20px 20px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 10px;
+        }
+
+        .sidebar-title {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            font-weight: 600;
+            color: var(--text-secondary);
+            letter-spacing: 0.5px;
+        }
+
+        .sidebar-menu {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .sidebar-menu-item {
+            margin: 0;
+        }
+
+        .sidebar-menu-link {
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+            color: var(--text-primary);
+            text-decoration: none;
+            transition: all 0.2s ease;
+            font-size: 0.95rem;
+            border-left: 3px solid transparent;
+        }
+
+        .sidebar-menu-link:hover {
+            background-color: rgba(52, 152, 219, 0.08);
+            border-left-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .sidebar-menu-link.active {
+            background-color: rgba(52, 152, 219, 0.15);
+            border-left-color: var(--primary);
+            color: var(--primary);
+            font-weight: 500;
+        }
+
+        .sidebar-menu-icon {
+            margin-right: 12px;
+            font-size: 1.1rem;
+        }
+
+        .main-content {
+            flex: 1;
+            overflow-x: auto;
+            overflow-y: auto;
+            max-height: 100vh;
+        }
+
+        .page-container {
+            padding: 20px;
+        }
+
+        .section-card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .licoes-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 16px;
+            font-size: 0.9rem;
+        }
+
+        .licoes-table th,
+        .licoes-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .licoes-table th {
+            background-color: var(--bg-main);
+            font-weight: 600;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            position: sticky;
+            top: 0;
+        }
+
+        .licoes-table tr:hover {
+            background-color: rgba(52, 152, 219, 0.05);
+        }
+
+        .tipo-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .tipo-sucesso {
+            background-color: rgba(34, 197, 94, 0.1);
+            color: #16a34a;
+        }
+
+        .tipo-problema {
+            background-color: rgba(239, 68, 68, 0.1);
+            color: #dc2626;
+        }
+
+        .tipo-oportunidade {
+            background-color: rgba(59, 130, 246, 0.1);
+            color: #2563eb;
+        }
+
+        .btn-add {
+            padding: 8px 16px;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+        }
+
+        .btn-add:hover {
+            background-color: #2980b9;
+        }
+
+        .btn-action {
+            padding: 4px 8px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            margin-left: 4px;
+        }
+
+        .btn-edit {
+            background-color: rgba(52, 152, 219, 0.1);
+            color: var(--primary);
+        }
+
+        .btn-delete {
+            background-color: rgba(220, 38, 38, 0.1);
+            color: var(--danger);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background-color: var(--bg-card);
+            border-radius: 8px;
+            padding: 24px;
+            max-width: 700px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-header h3 {
+            margin: 0;
+            color: var(--primary);
+        }
+
+        .btn-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--text-secondary);
+        }
+
+        .btn-close:hover {
+            color: var(--text-primary);
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .form-group label {
+            font-size: 0.9rem;
+            font-weight: 500;
+            margin-bottom: 6px;
+            color: var(--text-secondary);
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            padding: 10px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-size: 0.95rem;
+            background-color: var(--bg-main);
+            color: var(--text-primary);
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 0;
+        }
+
+        @media (max-width: 1024px) {
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .main-layout {
+                flex-direction: column;
+            }
+
+            .sidebar {
+                width: 100%;
+                height: auto;
+                position: relative;
+                border-right: none;
+                border-bottom: 1px solid var(--border);
+            }
+
+            .main-content {
+                max-height: none;
+            }
+
+            .licoes-table {
+                font-size: 0.8rem;
+            }
+
+            .licoes-table th,
+            .licoes-table td {
+                padding: 8px 6px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="main-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-title">Menu do Projeto</div>
+            </div>
+            <nav>
+                <ul class="sidebar-menu">
+                    <li class="sidebar-menu-item">
+                        <a href="{{ url_for('fluxo', projeto_id=projeto.id) }}" class="sidebar-menu-link">
+                            <span class="sidebar-menu-icon">✓</span>
+                            <span>Cenários de Teste</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-menu-item">
+                        <a href="javascript:void(0)" class="sidebar-menu-link">
+                            <span class="sidebar-menu-icon">⚠</span>
+                            <span>Incidentes</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-menu-item">
+                        <a href="javascript:void(0)" class="sidebar-menu-link">
+                            <span class="sidebar-menu-icon">◆</span>
+                            <span>Riscos</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-menu-item">
+                        <a href="{{ url_for('licoes_aprendidas', projeto_id=projeto.id) }}" class="sidebar-menu-link active">
+                            <span class="sidebar-menu-icon">◉</span>
+                            <span>Lições Aprendidas</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-menu-item">
+                        <a href="{{ url_for('solicitacoes_mudanca', projeto_id=projeto.id) }}" class="sidebar-menu-link">
+                            <span class="sidebar-menu-icon">⟳</span>
+                            <span>Solicitações de Mudança</span>
+                        </a>
+                    </li>
+                    {% if pode_gerenciar_membros %}
+                    <li class="sidebar-menu-item">
+                        <a href="{{ url_for('gerenciar_acessos', projeto_id=projeto.id) }}" class="sidebar-menu-link">
+                            <span class="sidebar-menu-icon">⚙</span>
+                            <span>Gerenciar Acessos</span>
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </aside>
+
+        <!-- Conteúdo Principal -->
+        <div class="main-content">
+            <div class="page-container">
+                <div class="page-header">
+                    <h1>Lições Aprendidas - {{ projeto.nome }}</h1>
+                    <div class="user-bar">
+                        <div>
+                            <strong>Logado como:</strong> {{ usuario_atual }}
+                        </div>
+                        <div>
+                            <a href="{{ url_for('projetos') }}">← Voltar para Projetos</a>
+                            <span style="margin-left:12px;"><a href="/logout">Sair</a></span>
+                        </div>
+                    </div>
+
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert {{ category }}">{{ message }}</div>
+                        {% endfor %}
+                    {% endif %}
+                    {% endwith %}
+                </div>
+
+                <div class="section-card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                        <h2 class="section-title">Registro de Lições Aprendidas</h2>
+                        {% if pode_criar %}
+                        <button class="btn-add" onclick="abrirModalCriar()">+ Nova Lição Aprendida</button>
+                        {% endif %}
+                    </div>
+
+                    {% if licoes %}
+                    <div style="overflow-x: auto;">
+                        <table class="licoes-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Fase</th>
+                                    <th>Categoria</th>
+                                    <th>Tipo</th>
+                                    <th>Descrição</th>
+                                    <th>Responsável</th>
+                                    <th>Status</th>
+                                    <th>Aplicável?</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for licao in licoes %}
+                                <tr>
+                                    <td><strong>{{ licao.id }}</strong></td>
+                                    <td>{{ licao.fase.nome if licao.fase else '-' }}</td>
+                                    <td>{{ licao.categoria or '-' }}</td>
+                                    <td>
+                                        {% if licao.tipo == 'Sucesso' %}
+                                        <span class="tipo-badge tipo-sucesso">{{ licao.tipo }}</span>
+                                        {% elif licao.tipo == 'Problema' %}
+                                        <span class="tipo-badge tipo-problema">{{ licao.tipo }}</span>
+                                        {% else %}
+                                        <span class="tipo-badge tipo-oportunidade">{{ licao.tipo }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td style="max-width: 300px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ licao.descricao }}</td>
+                                    <td>{{ licao.responsavel or '-' }}</td>
+                                    <td>{{ licao.status or '-' }}</td>
+                                    <td>{{ 'Sim' if licao.aplicavel_futuros else 'Não' }}</td>
+                                    <td>
+                                        {% if pode_editar %}
+                                        <button class="btn-action btn-edit" 
+                                                data-id="{{ licao.id }}"
+                                                data-fase-id="{{ licao.fase_id or '' }}"
+                                                data-categoria="{{ licao.categoria or '' }}"
+                                                data-tipo="{{ licao.tipo or '' }}"
+                                                data-descricao="{{ licao.descricao or '' }}"
+                                                data-causa-raiz="{{ licao.causa_raiz or '' }}"
+                                                data-impacto="{{ licao.impacto or '' }}"
+                                                data-acao-tomada="{{ licao.acao_tomada or '' }}"
+                                                data-recomendacao="{{ licao.recomendacao or '' }}"
+                                                data-responsavel="{{ licao.responsavel or '' }}"
+                                                data-status="{{ licao.status or '' }}"
+                                                data-aplicavel="{{ licao.aplicavel_futuros }}"
+                                                onclick="abrirModalEditarFromButton(this)">✏️</button>
+                                        {% endif %}
+                                        {% if pode_excluir %}
+                                        <button class="btn-action btn-delete" onclick="excluirLicao({{ licao.id }})">🗑️</button>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                        Nenhuma lição aprendida registrada ainda.
+                        {% if pode_criar %}
+                        <br><br>
+                        <button class="btn-add" onclick="abrirModalCriar()">+ Registrar Primeira Lição</button>
+                        {% endif %}
+                    </p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Criar Lição -->
+    <div id="modalCriar" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Nova Lição Aprendida</h3>
+                <button class="btn-close" onclick="fecharModalCriar()">×</button>
+            </div>
+            <form method="POST">
+                <input type="hidden" name="action" value="criar">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Fase</label>
+                        <select name="fase_id">
+                            <option value="">Geral</option>
+                            {% for fase in fases %}
+                            <option value="{{ fase.id }}">{{ fase.nome }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Categoria</label>
+                        <select name="categoria">
+                            <option value="">Selecione...</option>
+                            <option value="Técnica">Técnica</option>
+                            <option value="Gestão">Gestão</option>
+                            <option value="Comunicação">Comunicação</option>
+                            <option value="Processos">Processos</option>
+                            <option value="Recursos">Recursos</option>
+                            <option value="Qualidade">Qualidade</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Tipo</label>
+                        <select name="tipo" required>
+                            <option value="">Selecione...</option>
+                            <option value="Sucesso">Sucesso</option>
+                            <option value="Problema">Problema</option>
+                            <option value="Oportunidade">Oportunidade</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Status</label>
+                        <select name="status">
+                            <option value="Registrada">Registrada</option>
+                            <option value="Em Análise">Em Análise</option>
+                            <option value="Aplicada">Aplicada</option>
+                            <option value="Documentada">Documentada</option>
+                        </select>
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Descrição *</label>
+                        <textarea name="descricao" required></textarea>
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Causa Raiz</label>
+                        <textarea name="causa_raiz"></textarea>
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Impacto</label>
+                        <textarea name="impacto"></textarea>
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Ação Tomada</label>
+                        <textarea name="acao_tomada"></textarea>
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Recomendação</label>
+                        <textarea name="recomendacao"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Responsável</label>
+                        <input type="text" name="responsavel">
+                    </div>
+                    <div class="form-group">
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="aplicavel" name="aplicavel_futuros" checked>
+                            <label for="aplicavel">Aplicável a futuros projetos</label>
+                        </div>
+                    </div>
+                </div>
+                <button type="submit" class="btn-add" style="width: 100%; margin-top: 10px;">Registrar Lição</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Editar Lição -->
+    <div id="modalEditar" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Editar Lição Aprendida</h3>
+                <button class="btn-close" onclick="fecharModalEditar()">×</button>
+            </div>
+            <form method="POST">
+                <input type="hidden" name="action" value="editar">
+                <input type="hidden" name="licao_id" id="edit_licao_id">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Fase</label>
+                        <select name="fase_id" id="edit_fase_id">
+                            <option value="">Geral</option>
+                            {% for fase in fases %}
+                            <option value="{{ fase.id }}">{{ fase.nome }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Categoria</label>
+                        <select name="categoria" id="edit_categoria">
+                            <option value="">Selecione...</option>
+                            <option value="Técnica">Técnica</option>
+                            <option value="Gestão">Gestão</option>
+                            <option value="Comunicação">Comunicação</option>
+                            <option value="Processos">Processos</option>
+                            <option value="Recursos">Recursos</option>
+                            <option value="Qualidade">Qualidade</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Tipo</label>
+                        <select name="tipo" id="edit_tipo" required>
+                            <option value="">Selecione...</option>
+                            <option value="Sucesso">Sucesso</option>
+                            <option value="Problema">Problema</option>
+                            <option value="Oportunidade">Oportunidade</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Status</label>
+                        <select name="status" id="edit_status">
+                            <option value="Registrada">Registrada</option>
+                            <option value="Em Análise">Em Análise</option>
+                            <option value="Aplicada">Aplicada</option>
+                            <option value="Documentada">Documentada</option>
+                        </select>
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Descrição *</label>
+                        <textarea name="descricao" id="edit_descricao" required></textarea>
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Causa Raiz</label>
+                        <textarea name="causa_raiz" id="edit_causa_raiz"></textarea>
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Impacto</label>
+                        <textarea name="impacto" id="edit_impacto"></textarea>
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Ação Tomada</label>
+                        <textarea name="acao_tomada" id="edit_acao_tomada"></textarea>
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Recomendação</label>
+                        <textarea name="recomendacao" id="edit_recomendacao"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Responsável</label>
+                        <input type="text" name="responsavel" id="edit_responsavel">
+                    </div>
+                    <div class="form-group">
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="edit_aplicavel" name="aplicavel_futuros">
+                            <label for="edit_aplicavel">Aplicável a futuros projetos</label>
+                        </div>
+                    </div>
+                </div>
+                <button type="submit" class="btn-add" style="width: 100%; margin-top: 10px;">Salvar Alterações</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function abrirModalCriar() {
+            document.getElementById('modalCriar').classList.add('active');
+        }
+
+        function fecharModalCriar() {
+            document.getElementById('modalCriar').classList.remove('active');
+        }
+
+        function abrirModalEditarFromButton(button) {
+            const id = button.getAttribute('data-id');
+            const faseId = button.getAttribute('data-fase-id');
+            const categoria = button.getAttribute('data-categoria');
+            const tipo = button.getAttribute('data-tipo');
+            const descricao = button.getAttribute('data-descricao');
+            const causaRaiz = button.getAttribute('data-causa-raiz');
+            const impacto = button.getAttribute('data-impacto');
+            const acaoTomada = button.getAttribute('data-acao-tomada');
+            const recomendacao = button.getAttribute('data-recomendacao');
+            const responsavel = button.getAttribute('data-responsavel');
+            const status = button.getAttribute('data-status');
+            const aplicavel = button.getAttribute('data-aplicavel') === 'True';
+            
+            abrirModalEditar(id, faseId, categoria, tipo, descricao, causaRaiz, impacto, acaoTomada, recomendacao, responsavel, status, aplicavel);
+        }
+
+        function abrirModalEditar(id, faseId, categoria, tipo, descricao, causaRaiz, impacto, acaoTomada, recomendacao, responsavel, status, aplicavel) {
+            document.getElementById('edit_licao_id').value = id;
+            document.getElementById('edit_fase_id').value = faseId !== null ? faseId : '';
+            document.getElementById('edit_categoria').value = categoria || '';
+            document.getElementById('edit_tipo').value = tipo || '';
+            document.getElementById('edit_descricao').value = descricao || '';
+            document.getElementById('edit_causa_raiz').value = causaRaiz || '';
+            document.getElementById('edit_impacto').value = impacto || '';
+            document.getElementById('edit_acao_tomada').value = acaoTomada || '';
+            document.getElementById('edit_recomendacao').value = recomendacao || '';
+            document.getElementById('edit_responsavel').value = responsavel || '';
+            document.getElementById('edit_status').value = status || 'Registrada';
+            document.getElementById('edit_aplicavel').checked = aplicavel;
+            document.getElementById('modalEditar').classList.add('active');
+        }
+
+        function fecharModalEditar() {
+            document.getElementById('modalEditar').classList.remove('active');
+        }
+
+        function excluirLicao(id) {
+            if (confirm('Tem certeza que deseja excluir esta lição aprendida?')) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.innerHTML = `
+                    <input type="hidden" name="action" value="excluir">
+                    <input type="hidden" name="licao_id" value="${id}">
+                `;
+                document.body.appendChild(form);
+                form.submit();
+            }
+        }
+
+        // Fechar modais ao clicar fora
+        document.getElementById('modalCriar').addEventListener('click', function(e) {
+            if (e.target === this) {
+                fecharModalCriar();
+            }
+        });
+
+        document.getElementById('modalEditar').addEventListener('click', function(e) {
+            if (e.target === this) {
+                fecharModalEditar();
+            }
+        });
+
+        // Prevenir reload ao clicar no link da página atual
+        document.addEventListener('DOMContentLoaded', function() {
+            const activeLinks = document.querySelectorAll('.sidebar-menu-link.active');
+            activeLinks.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                });
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Solicitações de Mudança - {{ projeto.nome }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+    <style>
+        .main-layout {
+            display: flex;
+            gap: 0;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            width: 250px;
+            background-color: var(--bg-card);
+            border-right: 1px solid var(--border);
+            padding: 20px 0;
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            overflow-y: auto;
+        }
+
+        .sidebar-header {
+            padding: 0 20px 20px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 10px;
+        }
+
+        .sidebar-title {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            font-weight: 600;
+            color: var(--text-secondary);
+            letter-spacing: 0.5px;
+        }
+
+        .sidebar-menu {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .sidebar-menu-item {
+            margin: 0;
+        }
+
+        .sidebar-menu-link {
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+            color: var(--text-primary);
+            text-decoration: none;
+            transition: all 0.2s ease;
+            font-size: 0.95rem;
+            border-left: 3px solid transparent;
+        }
+
+        .sidebar-menu-link:hover {
+            background-color: rgba(52, 152, 219, 0.08);
+            border-left-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .sidebar-menu-link.active {
+            background-color: rgba(52, 152, 219, 0.15);
+            border-left-color: var(--primary);
+            color: var(--primary);
+            font-weight: 500;
+        }
+
+        .sidebar-menu-icon {
+            margin-right: 12px;
+            font-size: 1.1rem;
+        }
+
+        .main-content {
+            flex: 1;
+            overflow-x: auto;
+            overflow-y: auto;
+            max-height: 100vh;
+        }
+
+        .page-container {
+            padding: 20px;
+        }
+
+        .section-card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .mudancas-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 16px;
+            font-size: 0.9rem;
+        }
+
+        .mudancas-table th,
+        .mudancas-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .mudancas-table th {
+            background-color: var(--bg-main);
+            font-weight: 600;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            position: sticky;
+            top: 0;
+        }
+
+        .mudancas-table tr:hover {
+            background-color: rgba(52, 152, 219, 0.05);
+        }
+
+        .tipo-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .tipo-escopo {
+            background-color: rgba(52, 152, 219, 0.1);
+            color: #2563eb;
+        }
+
+        .tipo-legal {
+            background-color: rgba(168, 85, 247, 0.1);
+            color: #9333ea;
+        }
+
+        .tipo-tecnica {
+            background-color: rgba(34, 197, 94, 0.1);
+            color: #16a34a;
+        }
+
+        .tipo-melhoria {
+            background-color: rgba(236, 72, 153, 0.1);
+            color: #db2777;
+        }
+
+        .tipo-correcao {
+            background-color: rgba(239, 68, 68, 0.1);
+            color: #dc2626;
+        }
+
+        .tipo-integracao {
+            background-color: rgba(245, 158, 11, 0.1);
+            color: #d97706;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .status-analise {
+            background-color: rgba(168, 85, 247, 0.1);
+            color: #9333ea;
+        }
+
+        .status-aprovada {
+            background-color: rgba(34, 197, 94, 0.1);
+            color: #16a34a;
+        }
+
+        .status-rejeitada {
+            background-color: rgba(239, 68, 68, 0.1);
+            color: #dc2626;
+        }
+
+        .status-implementacao {
+            background-color: rgba(52, 152, 219, 0.1);
+            color: #2563eb;
+        }
+
+        .status-concluida {
+            background-color: rgba(100, 116, 139, 0.1);
+            color: #475569;
+        }
+
+        .prioridade-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .prioridade-baixa {
+            background-color: rgba(100, 116, 139, 0.1);
+            color: #64748b;
+        }
+
+        .prioridade-media {
+            background-color: rgba(245, 158, 11, 0.1);
+            color: #d97706;
+        }
+
+        .prioridade-alta {
+            background-color: rgba(239, 68, 68, 0.1);
+            color: #dc2626;
+        }
+
+        .prioridade-critica {
+            background-color: rgba(127, 29, 29, 0.2);
+            color: #991b1b;
+            font-weight: 600;
+        }
+
+        .btn-add {
+            padding: 8px 16px;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: background-color 0.2s ease;
+        }
+
+        .btn-add:hover {
+            background-color: #2980b9;
+        }
+
+        .btn-action {
+            padding: 6px 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            margin-right: 4px;
+            transition: opacity 0.2s ease;
+        }
+
+        .btn-action:hover {
+            opacity: 0.8;
+        }
+
+        .btn-edit {
+            background-color: #3498db;
+            color: white;
+        }
+
+        .btn-delete {
+            background-color: #e74c3c;
+            color: white;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background-color: var(--bg-card);
+            border-radius: 8px;
+            padding: 24px;
+            max-width: 900px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-header h3 {
+            margin: 0;
+            color: var(--primary);
+        }
+
+        .btn-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--text-secondary);
+        }
+
+        .btn-close:hover {
+            color: var(--text-primary);
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .form-group label {
+            font-size: 0.9rem;
+            font-weight: 500;
+            margin-bottom: 6px;
+            color: var(--text-secondary);
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            padding: 10px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-size: 0.95rem;
+            background-color: var(--bg-main);
+            color: var(--text-primary);
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .form-section-title {
+            grid-column: 1 / -1;
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--primary);
+            margin-top: 12px;
+            margin-bottom: 4px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid var(--border);
+        }
+
+        @media (max-width: 1024px) {
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .main-layout {
+                flex-direction: column;
+            }
+
+            .sidebar {
+                width: 100%;
+                height: auto;
+                position: relative;
+                border-right: none;
+                border-bottom: 1px solid var(--border);
+            }
+
+            .main-content {
+                max-height: none;
+            }
+
+            .mudancas-table {
+                font-size: 0.8rem;
+            }
+
+            .mudancas-table th,
+            .mudancas-table td {
+                padding: 8px 6px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="main-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-title">Menu do Projeto</div>
+            </div>
+            <nav>
+                <ul class="sidebar-menu">
+                    <li class="sidebar-menu-item">
+                        <a href="{{ url_for('fluxo', projeto_id=projeto.id) }}" class="sidebar-menu-link">
+                            <span class="sidebar-menu-icon">✓</span>
+                            <span>Cenários de Teste</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-menu-item">
+                        <a href="javascript:void(0)" class="sidebar-menu-link">
+                            <span class="sidebar-menu-icon">⚠</span>
+                            <span>Incidentes</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-menu-item">
+                        <a href="javascript:void(0)" class="sidebar-menu-link">
+                            <span class="sidebar-menu-icon">◆</span>
+                            <span>Riscos</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-menu-item">
+                        <a href="{{ url_for('licoes_aprendidas', projeto_id=projeto.id) }}" class="sidebar-menu-link">
+                            <span class="sidebar-menu-icon">◉</span>
+                            <span>Lições Aprendidas</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-menu-item">
+                        <a href="{{ url_for('solicitacoes_mudanca', projeto_id=projeto.id) }}" class="sidebar-menu-link active">
+                            <span class="sidebar-menu-icon">⟳</span>
+                            <span>Solicitações de Mudança</span>
+                        </a>
+                    </li>
+                    {% if pode_gerenciar_membros %}
+                    <li class="sidebar-menu-item">
+                        <a href="{{ url_for('gerenciar_acessos', projeto_id=projeto.id) }}" class="sidebar-menu-link">
+                            <span class="sidebar-menu-icon">⚙</span>
+                            <span>Gerenciar Acessos</span>
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </aside>
+
+        <!-- Conteúdo Principal -->
+        <div class="main-content">
+            <div class="page-container">
+                <div class="page-header">
+                    <h1>Solicitações de Mudança - {{ projeto.nome }}</h1>
+                    <div class="user-bar">
+                        <div>
+                            <strong>Logado como:</strong> {{ usuario_atual }}
+                        </div>
+                        <div>
+                            <a href="{{ url_for('projetos') }}">← Voltar para Projetos</a>
+                            <span style="margin-left:12px;"><a href="/logout">Sair</a></span>
+                        </div>
+                    </div>
+
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert {{ category }}">{{ message }}</div>
+                        {% endfor %}
+                    {% endif %}
+                    {% endwith %}
+                </div>
+
+                <div class="section-card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                        <h2 class="section-title">Registro de Solicitações de Mudança</h2>
+                        {% if pode_criar %}
+                        <button class="btn-add" onclick="abrirModalCriar()">+ Nova Solicitação</button>
+                        {% endif %}
+                    </div>
+
+                    {% if mudancas %}
+                    <div style="overflow-x: auto;">
+                        <table class="mudancas-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 60px;">ID</th>
+                                    <th>Data</th>
+                                    <th>Solicitante</th>
+                                    <th>Tipo</th>
+                                    <th>Descrição</th>
+                                    <th>Prioridade</th>
+                                    <th>Status</th>
+                                    <th>Recomendação PM</th>
+                                    <th style="width: 120px;">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for mudanca in mudancas %}
+                                <tr>
+                                    <td>#{{ mudanca.id }}</td>
+                                    <td>{{ mudanca.data_solicitacao.strftime('%d/%m/%Y') }}</td>
+                                    <td>{{ mudanca.solicitante or '-' }}</td>
+                                    <td>
+                                        {% if mudanca.tipo_mudanca == 'Escopo' %}
+                                            <span class="tipo-badge tipo-escopo">Escopo</span>
+                                        {% elif mudanca.tipo_mudanca == 'Legal' %}
+                                            <span class="tipo-badge tipo-legal">Legal</span>
+                                        {% elif mudanca.tipo_mudanca == 'Técnica' %}
+                                            <span class="tipo-badge tipo-tecnica">Técnica</span>
+                                        {% elif mudanca.tipo_mudanca == 'Melhoria' %}
+                                            <span class="tipo-badge tipo-melhoria">Melhoria</span>
+                                        {% elif mudanca.tipo_mudanca == 'Correção' %}
+                                            <span class="tipo-badge tipo-correcao">Correção</span>
+                                        {% elif mudanca.tipo_mudanca == 'Integração' %}
+                                            <span class="tipo-badge tipo-integracao">Integração</span>
+                                        {% else %}
+                                            <span class="tipo-badge">{{ mudanca.tipo_mudanca or '-' }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ mudanca.descricao[:50] ~ '...' if mudanca.descricao|length > 50 else mudanca.descricao }}</td>
+                                    <td>
+                                        {% if mudanca.prioridade == 'Crítica' %}
+                                            <span class="prioridade-badge prioridade-critica">Crítica</span>
+                                        {% elif mudanca.prioridade == 'Alta' %}
+                                            <span class="prioridade-badge prioridade-alta">Alta</span>
+                                        {% elif mudanca.prioridade == 'Média' %}
+                                            <span class="prioridade-badge prioridade-media">Média</span>
+                                        {% elif mudanca.prioridade == 'Baixa' %}
+                                            <span class="prioridade-badge prioridade-baixa">Baixa</span>
+                                        {% else %}
+                                            <span class="prioridade-badge">{{ mudanca.prioridade or '-' }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if mudanca.status == 'Em análise' %}
+                                            <span class="status-badge status-analise">Em análise</span>
+                                        {% elif mudanca.status == 'Aprovada' %}
+                                            <span class="status-badge status-aprovada">Aprovada</span>
+                                        {% elif mudanca.status == 'Rejeitada' %}
+                                            <span class="status-badge status-rejeitada">Rejeitada</span>
+                                        {% elif mudanca.status == 'Em implementação' %}
+                                            <span class="status-badge status-implementacao">Em implementação</span>
+                                        {% elif mudanca.status == 'Concluída' %}
+                                            <span class="status-badge status-concluida">Concluída</span>
+                                        {% else %}
+                                            <span class="status-badge">{{ mudanca.status or '-' }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ mudanca.recomendacao_pm or '-' }}</td>
+                                    <td>
+                                        {% if pode_editar %}
+                                        <button class="btn-action btn-edit" 
+                                            onclick="abrirModalEditarFromButton(this)"
+                                            data-id="{{ mudanca.id }}"
+                                            data-solicitante="{{ mudanca.solicitante or '' }}"
+                                            data-area-solicitante="{{ mudanca.area_solicitante or '' }}"
+                                            data-descricao="{{ mudanca.descricao or '' }}"
+                                            data-justificativa="{{ mudanca.justificativa or '' }}"
+                                            data-tipo-mudanca="{{ mudanca.tipo_mudanca or '' }}"
+                                            data-impacto-prazo="{{ mudanca.impacto_prazo or '' }}"
+                                            data-impacto-custo="{{ mudanca.impacto_custo or '' }}"
+                                            data-impacto-escopo="{{ mudanca.impacto_escopo or '' }}"
+                                            data-impacto-recursos="{{ mudanca.impacto_recursos or '' }}"
+                                            data-impacto-risco="{{ mudanca.impacto_risco or '' }}"
+                                            data-prioridade="{{ mudanca.prioridade or '' }}"
+                                            data-recomendacao-pm="{{ mudanca.recomendacao_pm or '' }}"
+                                            data-status="{{ mudanca.status or '' }}"
+                                            data-aprovador="{{ mudanca.aprovador or '' }}"
+                                            data-data-decisao="{{ mudanca.data_decisao.strftime('%Y-%m-%d') if mudanca.data_decisao else '' }}"
+                                            data-data-implementacao="{{ mudanca.data_implementacao.strftime('%Y-%m-%d') if mudanca.data_implementacao else '' }}"
+                                            data-observacoes="{{ mudanca.observacoes or '' }}">Editar</button>
+                                        {% endif %}
+                                        {% if pode_excluir %}
+                                        <button class="btn-action btn-delete" onclick="excluirMudanca({{ mudanca.id }})">Excluir</button>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p style="text-align: center; color: var(--text-secondary); margin: 20px 0;">Nenhuma solicitação de mudança registrada ainda.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Criar Solicitação -->
+    <div id="modalCriar" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Nova Solicitação de Mudança</h3>
+                <button class="btn-close" onclick="fecharModalCriar()">×</button>
+            </div>
+            <form method="POST">
+                <input type="hidden" name="action" value="criar">
+                <div class="form-grid">
+                    <div class="form-section-title">Informações Gerais</div>
+                    
+                    <div class="form-group">
+                        <label>Solicitante</label>
+                        <input type="text" name="solicitante">
+                    </div>
+                    <div class="form-group">
+                        <label>Área Solicitante</label>
+                        <input type="text" name="area_solicitante">
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Descrição da Mudança *</label>
+                        <textarea name="descricao" required></textarea>
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Justificativa de Negócio</label>
+                        <textarea name="justificativa"></textarea>
+                    </div>
+                    
+                    <div class="form-section-title">Classificação</div>
+                    
+                    <div class="form-group">
+                        <label>Tipo de Mudança</label>
+                        <select name="tipo_mudanca">
+                            <option value="">Selecione...</option>
+                            <option value="Escopo">Escopo</option>
+                            <option value="Legal">Legal</option>
+                            <option value="Técnica">Técnica</option>
+                            <option value="Melhoria">Melhoria</option>
+                            <option value="Correção">Correção</option>
+                            <option value="Integração">Integração</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Prioridade</label>
+                        <select name="prioridade">
+                            <option value="">Selecione...</option>
+                            <option value="Baixa">Baixa</option>
+                            <option value="Média">Média</option>
+                            <option value="Alta">Alta</option>
+                            <option value="Crítica">Crítica</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-section-title">Análise de Impacto</div>
+                    
+                    <div class="form-group">
+                        <label>Impacto no Prazo</label>
+                        <input type="text" name="impacto_prazo" placeholder="Ex: +2 semanas">
+                    </div>
+                    <div class="form-group">
+                        <label>Impacto no Custo</label>
+                        <input type="text" name="impacto_custo" placeholder="Ex: R$ 10.000">
+                    </div>
+                    <div class="form-group">
+                        <label>Impacto no Escopo</label>
+                        <select name="impacto_escopo">
+                            <option value="">Selecione...</option>
+                            <option value="Baixo">Baixo</option>
+                            <option value="Médio">Médio</option>
+                            <option value="Alto">Alto</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Impacto em Riscos</label>
+                        <select name="impacto_risco">
+                            <option value="">Selecione...</option>
+                            <option value="Baixo">Baixo</option>
+                            <option value="Médio">Médio</option>
+                            <option value="Alto">Alto</option>
+                        </select>
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Impacto em Recursos</label>
+                        <textarea name="impacto_recursos" placeholder="Descreva o impacto nos recursos do projeto"></textarea>
+                    </div>
+                    
+                    <div class="form-section-title">Decisão e Acompanhamento</div>
+                    
+                    <div class="form-group">
+                        <label>Recomendação PM</label>
+                        <select name="recomendacao_pm">
+                            <option value="">Selecione...</option>
+                            <option value="Aprovar">Aprovar</option>
+                            <option value="Rejeitar">Rejeitar</option>
+                            <option value="Postergar">Postergar</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Status</label>
+                        <select name="status">
+                            <option value="Em análise">Em análise</option>
+                            <option value="Aprovada">Aprovada</option>
+                            <option value="Rejeitada">Rejeitada</option>
+                            <option value="Em implementação">Em implementação</option>
+                            <option value="Concluída">Concluída</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Aprovador</label>
+                        <input type="text" name="aprovador">
+                    </div>
+                    <div class="form-group">
+                        <label>Data da Decisão</label>
+                        <input type="date" name="data_decisao">
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Data da Implementação</label>
+                        <input type="date" name="data_implementacao">
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Observações</label>
+                        <textarea name="observacoes"></textarea>
+                    </div>
+                </div>
+                <button type="submit" class="btn-add" style="width: 100%; margin-top: 10px;">Registrar Solicitação</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Editar Solicitação -->
+    <div id="modalEditar" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Editar Solicitação de Mudança</h3>
+                <button class="btn-close" onclick="fecharModalEditar()">×</button>
+            </div>
+            <form method="POST">
+                <input type="hidden" name="action" value="editar">
+                <input type="hidden" name="mudanca_id" id="edit_mudanca_id">
+                <div class="form-grid">
+                    <div class="form-section-title">Informações Gerais</div>
+                    
+                    <div class="form-group">
+                        <label>Solicitante</label>
+                        <input type="text" name="solicitante" id="edit_solicitante">
+                    </div>
+                    <div class="form-group">
+                        <label>Área Solicitante</label>
+                        <input type="text" name="area_solicitante" id="edit_area_solicitante">
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Descrição da Mudança *</label>
+                        <textarea name="descricao" id="edit_descricao" required></textarea>
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Justificativa de Negócio</label>
+                        <textarea name="justificativa" id="edit_justificativa"></textarea>
+                    </div>
+                    
+                    <div class="form-section-title">Classificação</div>
+                    
+                    <div class="form-group">
+                        <label>Tipo de Mudança</label>
+                        <select name="tipo_mudanca" id="edit_tipo_mudanca">
+                            <option value="">Selecione...</option>
+                            <option value="Escopo">Escopo</option>
+                            <option value="Legal">Legal</option>
+                            <option value="Técnica">Técnica</option>
+                            <option value="Melhoria">Melhoria</option>
+                            <option value="Correção">Correção</option>
+                            <option value="Integração">Integração</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Prioridade</label>
+                        <select name="prioridade" id="edit_prioridade">
+                            <option value="">Selecione...</option>
+                            <option value="Baixa">Baixa</option>
+                            <option value="Média">Média</option>
+                            <option value="Alta">Alta</option>
+                            <option value="Crítica">Crítica</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-section-title">Análise de Impacto</div>
+                    
+                    <div class="form-group">
+                        <label>Impacto no Prazo</label>
+                        <input type="text" name="impacto_prazo" id="edit_impacto_prazo">
+                    </div>
+                    <div class="form-group">
+                        <label>Impacto no Custo</label>
+                        <input type="text" name="impacto_custo" id="edit_impacto_custo">
+                    </div>
+                    <div class="form-group">
+                        <label>Impacto no Escopo</label>
+                        <select name="impacto_escopo" id="edit_impacto_escopo">
+                            <option value="">Selecione...</option>
+                            <option value="Baixo">Baixo</option>
+                            <option value="Médio">Médio</option>
+                            <option value="Alto">Alto</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Impacto em Riscos</label>
+                        <select name="impacto_risco" id="edit_impacto_risco">
+                            <option value="">Selecione...</option>
+                            <option value="Baixo">Baixo</option>
+                            <option value="Médio">Médio</option>
+                            <option value="Alto">Alto</option>
+                        </select>
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Impacto em Recursos</label>
+                        <textarea name="impacto_recursos" id="edit_impacto_recursos"></textarea>
+                    </div>
+                    
+                    <div class="form-section-title">Decisão e Acompanhamento</div>
+                    
+                    <div class="form-group">
+                        <label>Recomendação PM</label>
+                        <select name="recomendacao_pm" id="edit_recomendacao_pm">
+                            <option value="">Selecione...</option>
+                            <option value="Aprovar">Aprovar</option>
+                            <option value="Rejeitar">Rejeitar</option>
+                            <option value="Postergar">Postergar</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Status</label>
+                        <select name="status" id="edit_status">
+                            <option value="Em análise">Em análise</option>
+                            <option value="Aprovada">Aprovada</option>
+                            <option value="Rejeitada">Rejeitada</option>
+                            <option value="Em implementação">Em implementação</option>
+                            <option value="Concluída">Concluída</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Aprovador</label>
+                        <input type="text" name="aprovador" id="edit_aprovador">
+                    </div>
+                    <div class="form-group">
+                        <label>Data da Decisão</label>
+                        <input type="date" name="data_decisao" id="edit_data_decisao">
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Data da Implementação</label>
+                        <input type="date" name="data_implementacao" id="edit_data_implementacao">
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Observações</label>
+                        <textarea name="observacoes" id="edit_observacoes"></textarea>
+                    </div>
+                </div>
+                <button type="submit" class="btn-add" style="width: 100%; margin-top: 10px;">Salvar Alterações</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function abrirModalCriar() {
+            document.getElementById('modalCriar').classList.add('active');
+        }
+
+        function fecharModalCriar() {
+            document.getElementById('modalCriar').classList.remove('active');
+        }
+
+        function abrirModalEditarFromButton(button) {
+            const id = button.getAttribute('data-id');
+            const solicitante = button.getAttribute('data-solicitante');
+            const areaSolicitante = button.getAttribute('data-area-solicitante');
+            const descricao = button.getAttribute('data-descricao');
+            const justificativa = button.getAttribute('data-justificativa');
+            const tipoMudanca = button.getAttribute('data-tipo-mudanca');
+            const impactoPrazo = button.getAttribute('data-impacto-prazo');
+            const impactoCusto = button.getAttribute('data-impacto-custo');
+            const impactoEscopo = button.getAttribute('data-impacto-escopo');
+            const impactoRecursos = button.getAttribute('data-impacto-recursos');
+            const impactoRisco = button.getAttribute('data-impacto-risco');
+            const prioridade = button.getAttribute('data-prioridade');
+            const recomendacaoPm = button.getAttribute('data-recomendacao-pm');
+            const status = button.getAttribute('data-status');
+            const aprovador = button.getAttribute('data-aprovador');
+            const dataDecisao = button.getAttribute('data-data-decisao');
+            const dataImplementacao = button.getAttribute('data-data-implementacao');
+            const observacoes = button.getAttribute('data-observacoes');
+            
+            abrirModalEditar(id, solicitante, areaSolicitante, descricao, justificativa, tipoMudanca, 
+                           impactoPrazo, impactoCusto, impactoEscopo, impactoRecursos, impactoRisco, 
+                           prioridade, recomendacaoPm, status, aprovador, dataDecisao, 
+                           dataImplementacao, observacoes);
+        }
+
+        function abrirModalEditar(id, solicitante, areaSolicitante, descricao, justificativa, tipoMudanca, 
+                                  impactoPrazo, impactoCusto, impactoEscopo, impactoRecursos, impactoRisco, 
+                                  prioridade, recomendacaoPm, status, aprovador, dataDecisao, 
+                                  dataImplementacao, observacoes) {
+            document.getElementById('edit_mudanca_id').value = id;
+            document.getElementById('edit_solicitante').value = solicitante || '';
+            document.getElementById('edit_area_solicitante').value = areaSolicitante || '';
+            document.getElementById('edit_descricao').value = descricao || '';
+            document.getElementById('edit_justificativa').value = justificativa || '';
+            document.getElementById('edit_tipo_mudanca').value = tipoMudanca || '';
+            document.getElementById('edit_impacto_prazo').value = impactoPrazo || '';
+            document.getElementById('edit_impacto_custo').value = impactoCusto || '';
+            document.getElementById('edit_impacto_escopo').value = impactoEscopo || '';
+            document.getElementById('edit_impacto_recursos').value = impactoRecursos || '';
+            document.getElementById('edit_impacto_risco').value = impactoRisco || '';
+            document.getElementById('edit_prioridade').value = prioridade || '';
+            document.getElementById('edit_recomendacao_pm').value = recomendacaoPm || '';
+            document.getElementById('edit_status').value = status || 'Em análise';
+            document.getElementById('edit_aprovador').value = aprovador || '';
+            document.getElementById('edit_data_decisao').value = dataDecisao || '';
+            document.getElementById('edit_data_implementacao').value = dataImplementacao || '';
+            document.getElementById('edit_observacoes').value = observacoes || '';
+            document.getElementById('modalEditar').classList.add('active');
+        }
+
+        function fecharModalEditar() {
+            document.getElementById('modalEditar').classList.remove('active');
+        }
+
+        function excluirMudanca(id) {
+            if (confirm('Tem certeza que deseja excluir esta solicitação de mudança?')) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.innerHTML = `
+                    <input type="hidden" name="action" value="excluir">
+                    <input type="hidden" name="mudanca_id" value="${id}">
+                `;
+                document.body.appendChild(form);
+                form.submit();
+            }
+        }
+
+        // Fechar modais ao clicar fora
+        document.getElementById('modalCriar').addEventListener('click', function(e) {
+            if (e.target === this) {
+                fecharModalCriar();
+            }
+        });
+
+        document.getElementById('modalEditar').addEventListener('click', function(e) {
+            if (e.target === this) {
+                fecharModalEditar();
+            }
+        });
+
+        // Prevenir reload ao clicar no link da página atual
+        document.addEventListener('DOMContentLoaded', function() {
+            const activeLinks = document.querySelectorAll('.sidebar-menu-link.active');
+            activeLinks.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                });
+            });
+        });
+    </script>
+</body>
+</html>

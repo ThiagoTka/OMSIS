@@ -100,29 +100,6 @@
                     <a href="{{ url_for('fluxo', projeto_id=p.id) }}" style="text-decoration: none;">
                         <button class="btn-action btn-action-primary" type="button">Acessar Projeto</button>
                     </a>
-                    <button class="btn-action btn-gerenciar" type="button" data-projeto-id="{{ p.id }}">Gerenciar</button>
-                </div>
-
-                <div id="menu-{{ p.id }}" style="display: none; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border);">
-                    <form action="{{ url_for('adicionar_membro_projeto', projeto_id=p.id) }}" method="POST" style="margin-bottom: 10px;">
-                        <select name="user_id" required style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--border); margin-bottom: 8px;">
-                            <option value="" disabled selected>Adicionar membro</option>
-                            {% for u in usuarios %}
-                            <option value="{{ u.id }}">{{ u.username }}</option>
-                            {% endfor %}
-                        </select>
-                        <button type="submit" class="btn-action" style="margin-bottom: 10px;">Adicionar</button>
-                    </form>
-                    
-                    <form action="{{ url_for('remover_membro_projeto', projeto_id=p.id) }}" method="POST">
-                        <select name="user_id" required style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--border); margin-bottom: 8px;">
-                            <option value="" disabled selected>Remover membro</option>
-                            {% for m in p.membros %}
-                            <option value="{{ m.user.id }}">{{ m.user.username }}</option>
-                            {% endfor %}
-                        </select>
-                        <button type="submit" class="btn-action" style="background-color: rgba(220, 38, 38, 0.1); color: var(--danger);">Remover</button>
-                    </form>
                 </div>
             </div>
             {% endfor %}
@@ -145,26 +122,9 @@
             document.getElementById('modalCriar').classList.remove('active');
         }
 
-        function toggleMenu(projetoId) {
-            const menu = document.getElementById('menu-' + projetoId);
-            if (menu) {
-                menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
-            }
-        }
-
         document.getElementById('modalCriar').addEventListener('click', function(e) {
             if (e.target === this) {
                 fecharModalCriar();
-            }
-        });
-
-        // Event delegation para botões de gerenciar
-        document.addEventListener('click', function(e) {
-            if (e.target && e.target.classList.contains('btn-gerenciar')) {
-                const projetoId = e.target.getAttribute('data-projeto-id');
-                if (projetoId) {
-                    toggleMenu(projetoId);
-                }
             }
         });
     </script>

@@ -363,13 +363,13 @@
                         </a>
                     </li>
                     <li class="sidebar-menu-item">
-                        <a href="javascript:void(0)" class="sidebar-menu-link">
+                        <a href="{{ url_for('licoes_aprendidas', projeto_id=projeto.id) }}" class="sidebar-menu-link">
                             <span class="sidebar-menu-icon">◉</span>
                             <span>Lições Aprendidas</span>
                         </a>
                     </li>
                     <li class="sidebar-menu-item">
-                        <a href="javascript:void(0)" class="sidebar-menu-link">
+                        <a href="{{ url_for('solicitacoes_mudanca', projeto_id=projeto.id) }}" class="sidebar-menu-link">
                             <span class="sidebar-menu-icon">⟳</span>
                             <span>Solicitações de Mudança</span>
                         </a>
