@@ -1729,12 +1729,6 @@ def solicitacoes_mudanca(projeto_id):
     )
 
 
-@app.route("/health")
-def health():
-    db.session.execute(text("SELECT 1"))
-    return "OK"
-
-
 # ------------------------------------------------------------------------------
 # ENTRYPOINT
 # ------------------------------------------------------------------------------
