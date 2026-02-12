@@ -1,53 +1,38 @@
 """
-Script de migração para adicionar colunas de lições aprendidas
+⚠️  DEPRECATED - NÃO é MAIS NECESSÁRIO
+
+Todos os scripts de migração antigos são obsoletos!
+
+A criação de tabelas do banco de dados agora é AUTOMÁTICA quando a aplicação inicia.
+
+Veja app.py:
+    with app.app_context():
+        criar_tabelas()  # Executa db.create_all()
+
+✅ Isto substitui completamente os antigos scripts de migração:
+- create_db.py ❌
+- init_db.py ❌
+- migrate_licoes.py ❌
+- migrate_mudancas.py ❌
+- migrate_perfis.py ❌
+
+Por que não precisa mais?
+1. SQLAlchemy ORM agora gerencia todas as tabelas automaticamente
+2. db.create_all() cria TODAS as tabelas necessárias em uma única chamada
+3. A inicialização acontece no startup da aplicação (app.py linha ~273)
+4. Seguro para rodar múltiplas vezes (idempotent)
+5. Funciona em qualquer ambiente (local, GCP, etc)
+
+Para desenvolvimento local:
+    python app.py
+
+Para GCP Cloud Run:
+    As tabelas serão criadas automaticamente na primeira requisição
+
+Não execute este script manualmente. Ele será ignorado.
 """
-import sqlite3
 
-# Conectar ao banco de dados
-conn = sqlite3.connect('instance/dev.db')
-cursor = conn.cursor()
-
-try:
-    # Adicionar colunas de permissões de lições aprendidas na tabela perfis
-    print("Adicionando colunas de permissões de lições aprendidas...")
-    
-    try:
-        cursor.execute("ALTER TABLE perfis ADD COLUMN pode_criar_licao BOOLEAN DEFAULT 0")
-        print("✓ Coluna pode_criar_licao adicionada")
-    except sqlite3.OperationalError as e:
-        if "duplicate column name" in str(e):
-            print("- Coluna pode_criar_licao já existe")
-        else:
-            raise
-    
-    try:
-        cursor.execute("ALTER TABLE perfis ADD COLUMN pode_editar_licao BOOLEAN DEFAULT 0")
-        print("✓ Coluna pode_editar_licao adicionada")
-    except sqlite3.OperationalError as e:
-        if "duplicate column name" in str(e):
-            print("- Coluna pode_editar_licao já existe")
-        else:
-            raise
-    
-    try:
-        cursor.execute("ALTER TABLE perfis ADD COLUMN pode_excluir_licao BOOLEAN DEFAULT 0")
-        print("✓ Coluna pode_excluir_licao adicionada")
-    except sqlite3.OperationalError as e:
-        if "duplicate column name" in str(e):
-            print("- Coluna pode_excluir_licao já existe")
-        else:
-            raise
-    
-    # Criar tabela de lições aprendidas
-    print("\nCriando tabela de lições aprendidas...")
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS licoes_aprendidas (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            projeto_id INTEGER NOT NULL,
-            fase_id INTEGER,
-            categoria VARCHAR(100),
-            tipo VARCHAR(50),
-            descricao TEXT NOT NULL,
+print(__doc__)
             causa_raiz TEXT,
             impacto TEXT,
             acao_tomada TEXT,

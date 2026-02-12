@@ -270,96 +270,23 @@ def get_fase_for_cenario_or_none(cenario):
 # ------------------------------------------------------------------------------
 # DB INIT
 # ------------------------------------------------------------------------------
-def criar_tabelas_e_dados():
+def criar_tabelas():
+    """
+    Cria todas as tabelas do banco de dados automaticamente.
+    Safe para executar múltiplas vezes (é idempotente).
+    Executado no startup da aplicação.
+    """
     try:
         db.create_all()
-
-        # Garantir que a coluna cenario_id exista em 'atividades' (adiciona se faltar)
-        try:
-            inspector = inspect(db.engine)
-            if "atividades" in inspector.get_table_names():
-                cols = [c["name"] for c in inspector.get_columns("atividades")]
-                if "cenario_id" not in cols:
-                    if db.engine.dialect.name == "sqlite":
-                        db.session.execute(text("ALTER TABLE atividades ADD COLUMN cenario_id INTEGER"))
-                    else:
-                        db.session.execute(text("ALTER TABLE atividades ADD COLUMN cenario_id INTEGER REFERENCES cenarios(id)"))
-                    db.session.commit()
-        except Exception:
-            # Se algo falhar aqui, ignoramos para não quebrar inicialização em ambientes restritos
-            pass
-
-        # Garantir que a coluna fase_id exista em 'cenarios' (adiciona se faltar)
-        try:
-            inspector = inspect(db.engine)
-            if "cenarios" in inspector.get_table_names():
-                cols = [c["name"] for c in inspector.get_columns("cenarios")]
-                if "fase_id" not in cols:
-                    if db.engine.dialect.name == "sqlite":
-                        db.session.execute(text("ALTER TABLE cenarios ADD COLUMN fase_id INTEGER"))
-                    else:
-                        db.session.execute(text("ALTER TABLE cenarios ADD COLUMN fase_id INTEGER REFERENCES fases(id)"))
-                    db.session.commit()
-        except Exception:
-            # Se algo falhar aqui, ignoramos para não quebrar inicialização em ambientes restritos
-            pass
-
-        if not User.query.first():
-            usuarios = [
-                ("Alice", "alice@example.com"),
-                ("Bob", "bob@example.com"),
-                ("Carlos", "carlos@example.com"),
-            ]
-
-            for nome, email in usuarios:
-                db.session.add(
-                    User(
-                        username=nome,
-                        email=email,
-                        password=generate_password_hash("123"),
-                    )
-                )
-
-            db.session.commit()
-
-        if not Atividade.query.first():
-            atividades = [
-                (1, "Levantamento de Requisitos", "Alice", True),
-                (2, "Desenvolvimento Backend", "Bob", False),
-                (3, "Desenvolvimento Frontend", "Carlos", False),
-                (4, "Deploy em Produção", "Alice", False),
-            ]
-
-            for seq, desc, resp, liberado in atividades:
-                db.session.add(
-                    Atividade(
-                        numero_sequencial=seq,
-                        descricao=desc,
-                        responsavel=resp,
-                        data_liberacao=datetime.now() if liberado else None,
-                    )
-                )
-
-            db.session.commit()
-
-        # Popular cenários iniciais
-        if not Cenario.query.first():
-            cenarios = [
-                ("Cenário A",),
-                ("Cenário B",),
-                ("Cenário C",),
-            ]
-            for (nome,) in cenarios:
-                db.session.add(Cenario(cenario=nome))
-            db.session.commit()
-
+        print("✅ Banco de dados inicializado com sucesso")
     except Exception as e:
-        print("ERRO AO INICIALIZAR DB:", e)
+        print(f"⚠️  Aviso ao inicializar DB: {e}")
+        # Não quebra a aplicação se falhar
 
 
-# 🔥 Executa sempre que o container sobe
+# 🔥 Inicializa o banco de dados automaticamente quando a app inicia
 with app.app_context():
-    criar_tabelas_e_dados()
+    criar_tabelas()
 
 
 # ------------------------------------------------------------------------------

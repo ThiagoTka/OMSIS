@@ -1,33 +1,38 @@
-from app import app, db, Projeto, ProjetoMembro, Perfil, MembroPerfil
+"""
+⚠️  DEPRECATED - NÃO é MAIS NECESSÁRIO
 
-with app.app_context():
-    # Criar novas tabelas
-    db.create_all()
-    print("✅ Tabelas criadas/atualizadas com sucesso")
-    
-    # Migrar projetos existentes
-    projetos = Projeto.query.all()
-    for projeto in projetos:
-        # Verificar se já tem perfis
-        if Perfil.query.filter_by(projeto_id=projeto.id).first():
-            print(f"⏭️  Projeto '{projeto.nome}' já tem perfis, pulando...")
-            continue
-        
-        print(f"📋 Migrando projeto '{projeto.nome}'...")
-        
-        # Criar perfis padrão
-        perfil_admin = Perfil(
-            nome="Administrador",
-            projeto_id=projeto.id,
-            pode_criar_atividade=True,
-            pode_editar_atividade=True,
-            pode_excluir_atividade=True,
-            pode_concluir_qualquer_atividade=True,
-            pode_editar_projeto=True,
-            pode_gerenciar_membros=True,
-            is_default=True
-        )
-        perfil_membro = Perfil(
+Todos os scripts de migração antigos são obsoletos!
+
+A criação de tabelas do banco de dados agora é AUTOMÁTICA quando a aplicação inicia.
+
+Veja app.py:
+    with app.app_context():
+        criar_tabelas()  # Executa db.create_all()
+
+✅ Isto substitui completamente os antigos scripts de migração:
+- create_db.py ❌
+- init_db.py ❌
+- migrate_licoes.py ❌
+- migrate_mudancas.py ❌
+- migrate_perfis.py ❌
+
+Por que não precisa mais?
+1. SQLAlchemy ORM agora gerencia todas as tabelas automaticamente
+2. db.create_all() cria TODAS as tabelas necessárias em uma única chamada
+3. A inicialização acontece no startup da aplicação (app.py linha ~273)
+4. Seguro para rodar múltiplas vezes (idempotent)
+5. Funciona em qualquer ambiente (local, GCP, etc)
+
+Para desenvolvimento local:
+    python app.py
+
+Para GCP Cloud Run:
+    As tabelas serão criadas automaticamente na primeira requisição
+
+Não execute este script manualmente. Ele será ignorado.
+"""
+
+print(__doc__)
             nome="Membro",
             projeto_id=projeto.id,
             pode_criar_atividade=True,

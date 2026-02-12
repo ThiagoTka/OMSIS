@@ -1,0 +1,61 @@
+# Arquivo .gcloudignore para evitar enviar arquivos desnecessários ao GCP durante deploy
+
+# Git
+.git
+.gitignore
+.github
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.venv/
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+.DS_Store
+.env
+
+# Database
+instance/
+dev.db
+database.db
+
+# Arquivos de teste/script
+create_db.py
+init_db.py
+migrate_*.py
+
+# Dockerfile se houver multi-stage (será descartado após build)
+Dockerfile
+
+# Arquivos desnecessários
+*.drawio
+*.drawio.bkp
+*.drawio.dtmp
+README.md
+cloud_sql_proxy
