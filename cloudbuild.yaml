@@ -1,17 +1,17 @@
 steps:
 - name: 'gcr.io/cloud-builders/docker'
-  args: ['build', '-t', 'gcr.io/imsis-486003/app', '.']
+  args: ['build', '-t', 'gcr.io/imsis-486003/imsis', '.']
 
 - name: 'gcr.io/cloud-builders/docker'
-  args: ['push', 'gcr.io/imsis-486003/app']
+  args: ['push', 'gcr.io/imsis-486003/imsis']
 
 - name: 'gcr.io/cloud-builders/gcloud'
   args:
     - 'run'
     - 'deploy'
-    - 'app'
+    - 'imsis'
     - '--image'
-    - 'gcr.io/imsis-486003/app'
+    - 'gcr.io/imsis-486003/imsis'
     - '--region'
     - 'us-central1'
     - '--platform'

@@ -15,28 +15,44 @@ from flask_login import (
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy import text, inspect
 
-# ------------------------------------------------------------------------------
-# APP
-# ------------------------------------------------------------------------------
+# Carregar secrets do Google Secret Manager (se em produção no GCP)
+try:
+    from load_secrets import load_secrets
+    load_secrets()
+except ImportError:
+    pass  # load_secrets.py não disponível (dev local)
+except Exception as e:
+    print(f"⚠️  Erro ao carregar secrets: {e}")
+
+# Criar app Flask ANTES de usar variáveis de ambiente
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "chave-secreta-dev")
+
+# Tentar carregar variáveis de ambiente com valores padrão
+db_user = os.environ.get("DB_USER", "")
+db_pass = os.environ.get("DB_PASS", "")
+db_name = os.environ.get("DB_NAME", "")
+cloud_sql_connection_name = os.environ.get("CLOUD_SQL_CONNECTION_NAME", "")
+
+# DEBUG: Log das variáveis (remover em produção)
+if db_user:
+    print(f"✓ DB_USER={db_user}")
+if db_name:
+    print(f"✓ DB_NAME={db_name}")
+if cloud_sql_connection_name:
+    print(f"✓ CLOUD_SQL_CONNECTION_NAME={cloud_sql_connection_name}")
 
 # DATABASE CONFIG
 if os.environ.get("DATABASE_URL"):
     app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL")
-elif (
-    os.environ.get("DB_USER")
-    and os.environ.get("DB_PASS")
-    and os.environ.get("DB_NAME")
-    and os.environ.get("CLOUD_SQL_CONNECTION_NAME")
-):
-    db_user = os.environ.get("DB_USER")
-    db_pass = quote_plus(os.environ.get("DB_PASS"))  # URL-encode the password
-    db_name = os.environ.get("DB_NAME")
-    cloud_sql_connection_name = os.environ.get("CLOUD_SQL_CONNECTION_NAME")
-    app.config["SQLALCHEMY_DATABASE_URI"] = f"postgresql+psycopg2://{db_user}:{db_pass}@/{db_name}?host=/cloudsql/{cloud_sql_connection_name}"
+    print("✓ Usando DATABASE_URL")
+elif db_user and db_pass and db_name and cloud_sql_connection_name:
+    db_pass_encoded = quote_plus(db_pass)  # URL-encode the password
+    app.config["SQLALCHEMY_DATABASE_URI"] = f"postgresql+psycopg2://{db_user}:{db_pass_encoded}@/{db_name}?host=/cloudsql/{cloud_sql_connection_name}"
+    print("✓ Conectando ao Cloud SQL")
 else:
     app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///dev.db"
+    print("✓ Usando SQLite local")
 
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
