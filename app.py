@@ -24,6 +24,32 @@ except ImportError:
 except Exception as e:
     print(f"⚠️  Erro ao carregar secrets: {e}")
 
+# Se ainda não houver DB_PASS, tentar ler arquivo de secret do Cloud Run
+if not os.environ.get("DB_PASS"):
+    try:
+        secret_path = "/var/run/secrets/cloud.google.com/secret/db-pass/latest"
+        if os.path.exists(secret_path):
+            with open(secret_path, "r") as f:
+                db_pass_value = f.read().strip()
+                if db_pass_value:
+                    os.environ["DB_PASS"] = db_pass_value
+                    print("✓ DB_PASS carregado de arquivo de secret")
+    except Exception as e:
+        print(f"⚠️  Erro ao carregar DB_PASS de arquivo: {e}")
+
+# Se ainda não houver SECRET_KEY, tentar ler arquivo de secret do Cloud Run
+if not os.environ.get("SECRET_KEY"):
+    try:
+        secret_path = "/var/run/secrets/cloud.google.com/secret/secret-key/latest"
+        if os.path.exists(secret_path):
+            with open(secret_path, "r") as f:
+                secret_key_value = f.read().strip()
+                if secret_key_value:
+                    os.environ["SECRET_KEY"] = secret_key_value
+                    print("✓ SECRET_KEY carregado de arquivo de secret")
+    except Exception as e:
+        print(f"⚠️  Erro ao carregar SECRET_KEY de arquivo: {e}")
+
 # Criar app Flask ANTES de usar variáveis de ambiente
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "chave-secreta-dev")
