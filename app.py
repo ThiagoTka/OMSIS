@@ -67,6 +67,10 @@ if db_name:
     print(f"✓ DB_NAME={db_name}")
 if cloud_sql_connection_name:
     print(f"✓ CLOUD_SQL_CONNECTION_NAME={cloud_sql_connection_name}")
+if db_pass:
+    print(f"✓ DB_PASS carregado ({len(db_pass)} caracteres)")
+else:
+    print("⚠️  DB_PASS está vazio!")
 
 # DATABASE CONFIG
 if os.environ.get("DATABASE_URL"):
