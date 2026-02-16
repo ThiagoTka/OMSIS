@@ -59,19 +59,38 @@ app = Flask(__name__)
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "chave-secreta-dev")
 
 
+def get_secret_or_env(key, default=""):
+    """Obtém secret de variável de ambiente, arquivo Cloud Run, ou padrão"""
+    # Tentar ambiente
+    value = os.environ.get(key)
+    if value:
+        return value
+    
+    # Tentar arquivo de secret do Cloud Run (/var/run/secrets/cloud.google.com/secret/{secret_name}/latest)
+    secret_path = f"/var/run/secrets/cloud.google.com/secret/{key.lower().replace('_', '-')}/latest"
+    if os.path.exists(secret_path):
+        try:
+            with open(secret_path, "r") as f:
+                return f.read().strip()
+        except Exception as e:
+            print(f"[WARN] Erro ao ler secret {key} de arquivo: {e}")
+    
+    return default
+
+
 def env_truthy(value):
     return str(value).strip().lower() in {"1", "true", "yes", "on"}
 
 
-app.config["APP_BASE_URL"] = os.environ.get("APP_BASE_URL", "").rstrip("/")
-app.config["SMTP_HOST"] = os.environ.get("SMTP_HOST", "")
-app.config["SMTP_PORT"] = os.environ.get("SMTP_PORT", "")
-app.config["SMTP_USER"] = os.environ.get("SMTP_USER", "")
-app.config["SMTP_PASS"] = os.environ.get("SMTP_PASS", "")
-app.config["SMTP_FROM"] = os.environ.get("SMTP_FROM", "")
-app.config["SMTP_USE_TLS"] = env_truthy(os.environ.get("SMTP_USE_TLS", "true"))
-app.config["SMTP_USE_SSL"] = env_truthy(os.environ.get("SMTP_USE_SSL", "false"))
-app.config["EMAIL_CONFIRM_MINUTES"] = int(os.environ.get("EMAIL_CONFIRM_MINUTES", "60"))
+app.config["APP_BASE_URL"] = get_secret_or_env("APP_BASE_URL", "").rstrip("/")
+app.config["SMTP_HOST"] = get_secret_or_env("SMTP_HOST")
+app.config["SMTP_PORT"] = get_secret_or_env("SMTP_PORT", "")
+app.config["SMTP_USER"] = get_secret_or_env("SMTP_USER")
+app.config["SMTP_PASS"] = get_secret_or_env("SMTP_PASS")
+app.config["SMTP_FROM"] = get_secret_or_env("SMTP_FROM")
+app.config["SMTP_USE_TLS"] = env_truthy(get_secret_or_env("SMTP_USE_TLS", "true"))
+app.config["SMTP_USE_SSL"] = env_truthy(get_secret_or_env("SMTP_USE_SSL", "false"))
+app.config["EMAIL_CONFIRM_MINUTES"] = int(get_secret_or_env("EMAIL_CONFIRM_MINUTES", "60"))
 
 # Debug: Show SMTP configuration loaded
 if app.config.get("SMTP_HOST"):
@@ -83,10 +102,10 @@ else:
     print("[WARN] SMTP_HOST nao configurado em app.config")
 
 # Tentar carregar variáveis de ambiente com valores padrão
-db_user = os.environ.get("DB_USER", "")
-db_pass = os.environ.get("DB_PASS", "")
-db_name = os.environ.get("DB_NAME", "")
-cloud_sql_connection_name = os.environ.get("CLOUD_SQL_CONNECTION_NAME", "")
+db_user = get_secret_or_env("DB_USER", "")
+db_pass = get_secret_or_env("DB_PASS", "")
+db_name = get_secret_or_env("DB_NAME", "")
+cloud_sql_connection_name = get_secret_or_env("CLOUD_SQL_CONNECTION_NAME", "")
 
 # DEBUG: Log das variáveis (remover em produção)
 if db_user:
