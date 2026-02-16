@@ -556,7 +556,11 @@ def send_email(to_email, subject, body):
         raise RuntimeError("SMTP_HOST nao configurado")
 
     if port_value:
-        port = int(port_value)
+        try:
+            port = int(port_value)
+        except ValueError as e:
+            print(f"[ERROR] SMTP_PORT invalido: {port_value} - {e}")
+            raise RuntimeError(f"SMTP_PORT nao e inteiro: {port_value}")
     else:
         port = 465 if use_ssl else 587
 
@@ -567,27 +571,48 @@ def send_email(to_email, subject, body):
     if not smtp_from:
         raise RuntimeError("SMTP_FROM nao configurado")
 
+    if not smtp_user:
+        raise RuntimeError("SMTP_USER nao configurado")
+    
+    if not smtp_pass:
+        raise RuntimeError("SMTP_PASS nao configurado")
+
     message = EmailMessage()
     message["Subject"] = subject
     message["From"] = smtp_from
     message["To"] = to_email
     message.set_content(body)
 
-    if use_ssl:
-        with smtplib.SMTP_SSL(host, port) as smtp:
-            if smtp_user and smtp_pass:
-                smtp.login(smtp_user, smtp_pass)
-            smtp.send_message(message)
-        return
+    try:
+        if use_ssl:
+            print(f"[DEBUG] Conectando com SMTP_SSL a {host}:{port}")
+            with smtplib.SMTP_SSL(host, port, timeout=10) as smtp:
+                print(f"[DEBUG] Conectado, fazendo login como {smtp_user}")
+                if smtp_user and smtp_pass:
+                    smtp.login(smtp_user, smtp_pass)
+                print(f"[DEBUG] Login bem-sucedido, enviando mensagem")
+                smtp.send_message(message)
+            print(f"[DEBUG] Email enviado com sucesso para {to_email}")
+            return
 
-    with smtplib.SMTP(host, port) as smtp:
-        smtp.ehlo()
-        if use_tls:
-            smtp.starttls(context=ssl.create_default_context())
+        print(f"[DEBUG] Conectand com SMTP a {host}:{port}")
+        with smtplib.SMTP(host, port, timeout=10) as smtp:
             smtp.ehlo()
-        if smtp_user and smtp_pass:
-            smtp.login(smtp_user, smtp_pass)
-        smtp.send_message(message)
+            if use_tls:
+                print(f"[DEBUG] Iniciando STARTTLS")
+                smtp.starttls(context=ssl.create_default_context())
+                smtp.ehlo()
+            if smtp_user and smtp_pass:
+                print(f"[DEBUG] Fazendo login como {smtp_user}")
+                smtp.login(smtp_user, smtp_pass)
+            print(f"[DEBUG] Enviando mensagem para {to_email}")
+            smtp.send_message(message)
+        print(f"[DEBUG] Email enviado com sucesso para {to_email}")
+    except Exception as e:
+        print(f"[ERROR] Erro ao enviar email: {type(e).__name__}: {e}")
+        import traceback
+        traceback.print_exc()
+        raise
 
 
 def generate_email_confirmation(user):
