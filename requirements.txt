@@ -4,5 +4,5 @@ Flask-Login==0.6.3
 gunicorn==21.2.0
 werkzeug==3.0.1
 psycopg2-binary==2.9.9
-SQLAlchemy==2.1.0
+SQLAlchemy==2.0.23
 google-cloud-secret-manager==2.16.4
