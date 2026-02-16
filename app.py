@@ -79,8 +79,24 @@ app.config["SMTP_PORT"] = get_secret_or_env("SMTP_PORT", "")
 app.config["SMTP_USER"] = get_secret_or_env("SMTP_USER")
 app.config["SMTP_PASS"] = get_secret_or_env("SMTP_PASS")
 app.config["SMTP_FROM"] = get_secret_or_env("SMTP_FROM")
-app.config["SMTP_USE_TLS"] = env_truthy(get_secret_or_env("SMTP_USE_TLS", "true"))
-app.config["SMTP_USE_SSL"] = env_truthy(get_secret_or_env("SMTP_USE_SSL", "false"))
+
+# Auto-detect SSL/TLS based on port
+smtp_port = app.config["SMTP_PORT"]
+if smtp_port == "465":
+    # Port 465 requires SMTP_SSL (implicit SSL)
+    app.config["SMTP_USE_SSL"] = True
+    app.config["SMTP_USE_TLS"] = False
+    print("[INFO] Porta 465 detectada - usando SSL=True, TLS=False")
+elif smtp_port == "587":
+    # Port 587 requires STARTTLS
+    app.config["SMTP_USE_SSL"] = False
+    app.config["SMTP_USE_TLS"] = True
+    print("[INFO] Porta 587 detectada - usando SSL=False, TLS=True")
+else:
+    # Use manual configuration or defaults
+    app.config["SMTP_USE_TLS"] = env_truthy(get_secret_or_env("SMTP_USE_TLS", "false"))
+    app.config["SMTP_USE_SSL"] = env_truthy(get_secret_or_env("SMTP_USE_SSL", "false"))
+
 app.config["EMAIL_CONFIRM_MINUTES"] = int(get_secret_or_env("EMAIL_CONFIRM_MINUTES", "60"))
 
 # Debug: Show SMTP configuration loaded
