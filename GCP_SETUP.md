@@ -22,6 +22,13 @@ echo -n "SUA_SENHA_AQUI" | gcloud secrets create db-pass --data-file=-
 
 # Criar secret para SECRET_KEY
 echo -n "SUA_CHAVE_SECRETA" | gcloud secrets create secret-key --data-file=-
+
+# Criar secrets SMTP
+echo -n "smtp.hostinger.com" | gcloud secrets create smtp-host --data-file=-
+echo -n "465" | gcloud secrets create smtp-port --data-file=-
+echo -n "accounts@imsis.com.br" | gcloud secrets create smtp-user --data-file=-
+echo -n "SUA_SENHA_SMTP" | gcloud secrets create smtp-pass --data-file=-
+echo -n "accounts@imsis.com.br" | gcloud secrets create smtp-from --data-file=-
 ```
 
 Ou via Google Cloud Console:
@@ -30,15 +37,15 @@ Ou via Google Cloud Console:
 3. Nome: `db-pass`, Valor: `[sua senha do banco de dados]`
 4. Nome: `secret-key`, Valor: `[sua chave secreta da aplicação]`
 
-**Dica**: Use o script `setup_gcp_secrets.sh` que carrega automaticamente do arquivo `.env`
+**Dica**: Use o script `setup_gcp_secrets.sh` (bash) ou `setup_gcp_secrets.ps1` (PowerShell) que carrega automaticamente do arquivo `.env`
 
 ## 📝 Passo 2: Atualizar cloudbuild.yaml com Secrets
 
 O arquivo já foi atualizado, mas aqui está o padrão correto:
 
 ```yaml
---set-env-vars=DB_USER=imsis_user,DB_NAME=imsis,CLOUD_SQL_CONNECTION_NAME=imsis-486003:us-central1:imsis-db,GCP_PROJECT=imsis-486003
---update-secrets=DB_PASS=db-pass:latest,SECRET_KEY=secret-key:latest
+--set-env-vars=DB_USER=imsis_user,DB_NAME=imsis,CLOUD_SQL_CONNECTION_NAME=imsis-486003:us-central1:imsis-db,GCP_PROJECT=imsis-486003,APP_BASE_URL=https://imsis.com.br
+--update-secrets=DB_PASS=db-pass:latest,SECRET_KEY=secret-key:latest,SMTP_HOST=smtp-host:latest,SMTP_PORT=smtp-port:latest,SMTP_USER=smtp-user:latest,SMTP_PASS=smtp-pass:latest,SMTP_FROM=smtp-from:latest
 ```
 
 ## 🚀 Passo 3: Deploy
@@ -78,6 +85,11 @@ gcloud run logs read app --region us-central1
 | `CLOUD_SQL_CONNECTION_NAME` | imsis-486003:us-central1:imsis-db | plaintext |
 | `DB_PASS` | (secret) | Secret Manager |
 | `SECRET_KEY` | (secret) | Secret Manager |
+| `SMTP_HOST` | (secret) | Secret Manager |
+| `SMTP_PORT` | (secret) | Secret Manager |
+| `SMTP_USER` | (secret) | Secret Manager |
+| `SMTP_PASS` | (secret) | Secret Manager |
+| `SMTP_FROM` | (secret) | Secret Manager |
 
 ## 🔗 Conexão Cloud SQL
 

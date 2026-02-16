@@ -1,5 +1,9 @@
 import os
-from datetime import datetime
+import secrets
+import smtplib
+import ssl
+from datetime import datetime, timedelta
+from email.message import EmailMessage
 from urllib.parse import quote_plus
 
 from flask import Flask, render_template, request, redirect, url_for, flash, abort
@@ -22,7 +26,7 @@ try:
 except ImportError:
     pass  # load_secrets.py não disponível (dev local)
 except Exception as e:
-    print(f"⚠️  Erro ao carregar secrets: {e}")
+    print(f"[WARN] Erro ao carregar secrets: {e}")
 
 # Se ainda não houver DB_PASS, tentar ler arquivo de secret do Cloud Run
 if not os.environ.get("DB_PASS"):
@@ -33,9 +37,9 @@ if not os.environ.get("DB_PASS"):
                 db_pass_value = f.read().strip()
                 if db_pass_value:
                     os.environ["DB_PASS"] = db_pass_value
-                    print("✓ DB_PASS carregado de arquivo de secret")
+                    print("[OK] DB_PASS carregado de arquivo de secret")
     except Exception as e:
-        print(f"⚠️  Erro ao carregar DB_PASS de arquivo: {e}")
+        print(f"[WARN] Erro ao carregar DB_PASS de arquivo: {e}")
 
 # Se ainda não houver SECRET_KEY, tentar ler arquivo de secret do Cloud Run
 if not os.environ.get("SECRET_KEY"):
@@ -46,13 +50,37 @@ if not os.environ.get("SECRET_KEY"):
                 secret_key_value = f.read().strip()
                 if secret_key_value:
                     os.environ["SECRET_KEY"] = secret_key_value
-                    print("✓ SECRET_KEY carregado de arquivo de secret")
+                    print("[OK] SECRET_KEY carregado de arquivo de secret")
     except Exception as e:
-        print(f"⚠️  Erro ao carregar SECRET_KEY de arquivo: {e}")
+        print(f"[WARN] Erro ao carregar SECRET_KEY de arquivo: {e}")
 
 # Criar app Flask ANTES de usar variáveis de ambiente
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "chave-secreta-dev")
+
+
+def env_truthy(value):
+    return str(value).strip().lower() in {"1", "true", "yes", "on"}
+
+
+app.config["APP_BASE_URL"] = os.environ.get("APP_BASE_URL", "").rstrip("/")
+app.config["SMTP_HOST"] = os.environ.get("SMTP_HOST", "")
+app.config["SMTP_PORT"] = os.environ.get("SMTP_PORT", "")
+app.config["SMTP_USER"] = os.environ.get("SMTP_USER", "")
+app.config["SMTP_PASS"] = os.environ.get("SMTP_PASS", "")
+app.config["SMTP_FROM"] = os.environ.get("SMTP_FROM", "")
+app.config["SMTP_USE_TLS"] = env_truthy(os.environ.get("SMTP_USE_TLS", "true"))
+app.config["SMTP_USE_SSL"] = env_truthy(os.environ.get("SMTP_USE_SSL", "false"))
+app.config["EMAIL_CONFIRM_MINUTES"] = int(os.environ.get("EMAIL_CONFIRM_MINUTES", "60"))
+
+# Debug: Show SMTP configuration loaded
+if app.config.get("SMTP_HOST"):
+    print(f"[OK] SMTP_HOST={app.config.get('SMTP_HOST')}")
+    print(f"[OK] SMTP_PORT={app.config.get('SMTP_PORT')}")
+    print(f"[OK] SMTP_USER={app.config.get('SMTP_USER')}")
+    print(f"[OK] SMTP_USE_SSL={app.config.get('SMTP_USE_SSL')}")
+else:
+    print("[WARN] SMTP_HOST nao configurado em app.config")
 
 # Tentar carregar variáveis de ambiente com valores padrão
 db_user = os.environ.get("DB_USER", "")
@@ -62,27 +90,27 @@ cloud_sql_connection_name = os.environ.get("CLOUD_SQL_CONNECTION_NAME", "")
 
 # DEBUG: Log das variáveis (remover em produção)
 if db_user:
-    print(f"✓ DB_USER={db_user}")
+    print(f"[OK] DB_USER={db_user}")
 if db_name:
-    print(f"✓ DB_NAME={db_name}")
+    print(f"[OK] DB_NAME={db_name}")
 if cloud_sql_connection_name:
-    print(f"✓ CLOUD_SQL_CONNECTION_NAME={cloud_sql_connection_name}")
+    print(f"[OK] CLOUD_SQL_CONNECTION_NAME={cloud_sql_connection_name}")
 if db_pass:
-    print(f"✓ DB_PASS carregado ({len(db_pass)} caracteres)")
+    print(f"[OK] DB_PASS carregado ({len(db_pass)} caracteres)")
 else:
-    print("⚠️  DB_PASS está vazio!")
+    print("[WARN] DB_PASS está vazio!")
 
 # DATABASE CONFIG
 if os.environ.get("DATABASE_URL"):
     app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL")
-    print("✓ Usando DATABASE_URL")
+    print("[OK] Usando DATABASE_URL")
 elif db_user and db_pass and db_name and cloud_sql_connection_name:
     db_pass_encoded = quote_plus(db_pass)  # URL-encode the password
     app.config["SQLALCHEMY_DATABASE_URI"] = f"postgresql+psycopg2://{db_user}:{db_pass_encoded}@/{db_name}?host=/cloudsql/{cloud_sql_connection_name}"
-    print("✓ Conectando ao Cloud SQL")
+    print("[OK] Conectando ao Cloud SQL")
 else:
     app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///dev.db"
-    print("✓ Usando SQLite local")
+    print("[OK] Usando SQLite local")
 
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
@@ -105,6 +133,11 @@ class User(UserMixin, db.Model):
     username = db.Column(db.String(100), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password = db.Column(db.String(200), nullable=False)
+    email_verified = db.Column(db.Boolean, default=False, nullable=False)
+    email_verification_token_hash = db.Column(db.String(255))
+    email_verification_expires_at = db.Column(db.DateTime)
+    password_reset_token_hash = db.Column(db.String(255))
+    password_reset_expires_at = db.Column(db.DateTime)
 
 
 class Projeto(db.Model):
@@ -386,13 +419,13 @@ def criar_tabelas():
     """
     try:
         db.create_all()
-        print("✅ Banco de dados inicializado com sucesso")
+        print("[OK] Banco de dados inicializado com sucesso")
         
         # Verificar e adicionar colunas faltando na tabela perfis (para backward compatibility)
         adicionar_colunas_faltando()
         
     except Exception as e:
-        print(f"⚠️  Aviso ao inicializar DB: {e}")
+        print(f"[WARN] Aviso ao inicializar DB: {e}")
         # Não quebra a aplicação se falhar
 
 
@@ -427,15 +460,144 @@ def adicionar_colunas_faltando():
                 try:
                     db.session.execute(text(sql))
                     db.session.commit()
-                    print(f"✓ Coluna {coluna} adicionada com sucesso")
+                    print(f"[OK] Coluna {coluna} adicionada com sucesso")
                 except Exception as e:
                     db.session.rollback()
                     # Coluna pode já existir ou houve outro erro, continua
                     if "duplicate column" not in str(e).lower():
-                        print(f"⚠️  Erro ao adicionar {coluna}: {e}")
+                        print(f"[WARN] Erro ao adicionar {coluna}: {e}")
+
+        # Colunas de users para confirmacao de e-mail
+        colunas_users_existentes = [c["name"] for c in inspector.get_columns("users")]
+        colunas_users_necessarias = {
+            "email_verified": "ALTER TABLE users ADD COLUMN email_verified BOOLEAN DEFAULT false",
+            "email_verification_token_hash": "ALTER TABLE users ADD COLUMN email_verification_token_hash TEXT",
+            "email_verification_expires_at": "ALTER TABLE users ADD COLUMN email_verification_expires_at TIMESTAMP",
+            "password_reset_token_hash": "ALTER TABLE users ADD COLUMN password_reset_token_hash TEXT",
+            "password_reset_expires_at": "ALTER TABLE users ADD COLUMN password_reset_expires_at TIMESTAMP",
+        }
+        adicionou_email_verified = False
+        for coluna, sql in colunas_users_necessarias.items():
+            if coluna not in colunas_users_existentes:
+                try:
+                    db.session.execute(text(sql))
+                    db.session.commit()
+                    if coluna == "email_verified":
+                        adicionou_email_verified = True
+                    print(f"[OK] Coluna users.{coluna} adicionada com sucesso")
+                except Exception as e:
+                    db.session.rollback()
+                    if "duplicate column" not in str(e).lower():
+                        print(f"[WARN] Erro ao adicionar users.{coluna}: {e}")
+
+        if adicionou_email_verified:
+            try:
+                db.session.execute(text("UPDATE users SET email_verified = true"))
+                db.session.commit()
+                print("[OK] Usuarios existentes marcados como verificados")
+            except Exception as e:
+                db.session.rollback()
+                print(f"[WARN] Erro ao atualizar email_verified: {e}")
     except Exception as e:
-        print(f"⚠️  Erro ao verificar colunas: {e}")
+        print(f"[WARN] Erro ao verificar colunas: {e}")
         # Não quebra a aplicação
+
+
+def build_external_url(path):
+    base_url = app.config.get("APP_BASE_URL") or request.url_root.rstrip("/")
+    return f"{base_url}{path}"
+
+
+def send_email(to_email, subject, body):
+    host = app.config.get("SMTP_HOST")
+    port_value = app.config.get("SMTP_PORT")
+    use_ssl = app.config.get("SMTP_USE_SSL")
+    use_tls = app.config.get("SMTP_USE_TLS")
+    smtp_user = app.config.get("SMTP_USER")
+    smtp_pass = app.config.get("SMTP_PASS")
+    smtp_from = app.config.get("SMTP_FROM")
+    
+    print(f"[DEBUG send_email] HOST={host}, PORT={port_value}, USER={smtp_user}, SSL={use_ssl}, TLS={use_tls}")
+    
+    if not host:
+        raise RuntimeError("SMTP_HOST nao configurado")
+
+    if port_value:
+        port = int(port_value)
+    else:
+        port = 465 if use_ssl else 587
+
+    smtp_user = app.config.get("SMTP_USER")
+    smtp_pass = app.config.get("SMTP_PASS")
+    smtp_from = app.config.get("SMTP_FROM") or smtp_user
+
+    if not smtp_from:
+        raise RuntimeError("SMTP_FROM nao configurado")
+
+    message = EmailMessage()
+    message["Subject"] = subject
+    message["From"] = smtp_from
+    message["To"] = to_email
+    message.set_content(body)
+
+    if use_ssl:
+        with smtplib.SMTP_SSL(host, port) as smtp:
+            if smtp_user and smtp_pass:
+                smtp.login(smtp_user, smtp_pass)
+            smtp.send_message(message)
+        return
+
+    with smtplib.SMTP(host, port) as smtp:
+        smtp.ehlo()
+        if use_tls:
+            smtp.starttls(context=ssl.create_default_context())
+            smtp.ehlo()
+        if smtp_user and smtp_pass:
+            smtp.login(smtp_user, smtp_pass)
+        smtp.send_message(message)
+
+
+def generate_email_confirmation(user):
+    token = secrets.token_urlsafe(32)
+    user.email_verification_token_hash = generate_password_hash(token)
+    user.email_verification_expires_at = datetime.utcnow() + timedelta(
+        minutes=app.config.get("EMAIL_CONFIRM_MINUTES", 60)
+    )
+    return token
+
+
+def send_confirmation_email(user, token):
+    confirm_path = url_for("confirm_email", uid=user.id, token=token)
+    confirm_link = build_external_url(confirm_path)
+    body = (
+        "Ola,\n\n"
+        "Confirme seu e-mail para ativar sua conta IMSIS:\n"
+        f"{confirm_link}\n\n"
+        "Se voce nao solicitou, ignore este e-mail.\n"
+    )
+    send_email(user.email, "Confirmacao de e-mail - IMSIS", body)
+
+
+def generate_password_reset(user):
+    token = secrets.token_urlsafe(32)
+    user.password_reset_token_hash = generate_password_hash(token)
+    user.password_reset_expires_at = datetime.utcnow() + timedelta(
+        minutes=app.config.get("EMAIL_CONFIRM_MINUTES", 60)
+    )
+    return token
+
+
+def send_password_reset_email(user, token):
+    reset_path = url_for("reset_password", uid=user.id, token=token)
+    reset_link = build_external_url(reset_path)
+    body = (
+        "Ola,\n\n"
+        "Clique no link abaixo para redefinir sua senha:\n"
+        f"{reset_link}\n\n"
+        "Se voce nao solicitou, ignore este e-mail.\n"
+        "Este link expira em 60 minutos.\n"
+    )
+    send_email(user.email, "Recuperacao de senha - IMSIS", body)
 
 
 # 🔥 Inicializa o banco de dados automaticamente quando a app inicia
@@ -483,12 +645,25 @@ def register():
             username=email.split("@")[0],
             email=email,
             password=generate_password_hash(password),
+            email_verified=False,
         )
         db.session.add(user)
+        db.session.flush()
+
+        token = generate_email_confirmation(user)
         db.session.commit()
 
-        login_user(user)
-        return redirect(url_for("projetos"))
+        try:
+            send_confirmation_email(user, token)
+            flash("Cadastro criado. Verifique seu e-mail para confirmar a conta.")
+        except Exception as e:
+            print(f"[WARN] Erro ao enviar e-mail de confirmacao: {e}")
+            flash(
+                "Cadastro criado, mas nao foi possivel enviar o e-mail de confirmacao. "
+                "Use 'Reenviar confirmacao' no login."
+            )
+
+        return redirect(url_for("login"))
 
     return render_template("register.html")
 
@@ -505,10 +680,177 @@ def login():
             flash("Usuário ou senha inválidos")
             return redirect(url_for("login"))
 
+        if not user.email_verified:
+            flash("Confirme seu e-mail antes de entrar.")
+            return redirect(url_for("resend_confirmation", email=email))
+
         login_user(user)
         return redirect(url_for("projetos"))
 
     return render_template("login.html")
+
+
+@app.route("/confirm-email")
+def confirm_email():
+    uid = request.args.get("uid", type=int)
+    token = request.args.get("token", "")
+
+    if not uid or not token:
+        flash("Link de confirmacao invalido")
+        return redirect(url_for("login"))
+
+    user = User.query.get(uid)
+    if not user:
+        flash("Link de confirmacao invalido")
+        return redirect(url_for("login"))
+
+    if user.email_verified:
+        flash("E-mail ja confirmado")
+        return redirect(url_for("login"))
+
+    if not user.email_verification_token_hash:
+        flash("Link de confirmacao invalido")
+        return redirect(url_for("login"))
+
+    if not user.email_verification_expires_at or user.email_verification_expires_at < datetime.utcnow():
+        flash("Link expirou. Reenvie a confirmacao.")
+        return redirect(url_for("resend_confirmation", email=user.email))
+
+    if not check_password_hash(user.email_verification_token_hash, token):
+        flash("Link de confirmacao invalido")
+        return redirect(url_for("login"))
+
+    user.email_verified = True
+    user.email_verification_token_hash = None
+    user.email_verification_expires_at = None
+    db.session.commit()
+
+    flash("E-mail confirmado com sucesso. Voce ja pode entrar.")
+    return redirect(url_for("login"))
+
+
+@app.route("/resend-confirmation", methods=["GET", "POST"])
+def resend_confirmation():
+    if request.method == "POST":
+        email = request.form.get("email")
+        if not email:
+            flash("Informe seu e-mail")
+            return redirect(url_for("resend_confirmation"))
+
+        user = User.query.filter_by(email=email).first()
+        if not user:
+            flash("Se o e-mail existir, enviaremos um novo link.")
+            return redirect(url_for("login"))
+
+        if user.email_verified:
+            flash("E-mail ja confirmado. Voce pode entrar.")
+            return redirect(url_for("login"))
+
+        token = generate_email_confirmation(user)
+        db.session.commit()
+
+        try:
+            send_confirmation_email(user, token)
+            flash("Enviamos um novo link de confirmacao para o seu e-mail.")
+        except Exception as e:
+            print(f"[WARN] Erro ao reenviar e-mail de confirmacao: {e}")
+            flash("Nao foi possivel enviar o e-mail de confirmacao. Tente novamente.")
+
+        return redirect(url_for("login"))
+
+    prefill_email = request.args.get("email", "")
+    return render_template("resend_confirmation.html", email=prefill_email)
+
+
+@app.route("/forgot-password", methods=["GET", "POST"])
+def forgot_password():
+    if request.method == "POST":
+        email = request.form.get("email")
+        if not email:
+            flash("Informe seu e-mail")
+            return redirect(url_for("forgot_password"))
+
+        user = User.query.filter_by(email=email).first()
+        if not user:
+            flash("Se o e-mail existir, enviaremos um link de recuperacao.")
+            return redirect(url_for("login"))
+
+        token = generate_password_reset(user)
+        db.session.commit()
+
+        try:
+            send_password_reset_email(user, token)
+            flash("Enviamos um link de recuperacao para o seu e-mail.")
+        except Exception as e:
+            print(f"[WARN] Erro ao enviar e-mail de recuperacao de senha: {e}")
+            flash("Nao foi possivel enviar o e-mail. Tente novamente.")
+
+        return redirect(url_for("login"))
+
+    return render_template("forgot_password.html")
+
+
+@app.route("/reset-password", methods=["GET", "POST"])
+def reset_password():
+    uid = request.args.get("uid", type=int)
+    token = request.args.get("token", "")
+
+    if request.method == "GET":
+        if not uid or not token:
+            flash("Link de recuperacao invalido")
+            return redirect(url_for("login"))
+
+        user = User.query.get(uid)
+        if not user:
+            flash("Link de recuperacao invalido")
+            return redirect(url_for("login"))
+
+        if not user.password_reset_token_hash:
+            flash("Link de recuperacao invalido")
+            return redirect(url_for("login"))
+
+        if not user.password_reset_expires_at or user.password_reset_expires_at < datetime.utcnow():
+            flash("Link expirou. Solicite um novo.")
+            return redirect(url_for("forgot_password"))
+
+        if not check_password_hash(user.password_reset_token_hash, token):
+            flash("Link de recuperacao invalido")
+            return redirect(url_for("login"))
+
+        return render_template("reset_password.html", uid=uid, token=token)
+
+    # POST request
+    new_password = request.form.get("password")
+    confirm_password = request.form.get("confirm_password")
+
+    if not uid or not token:
+        flash("Link de recuperacao invalido")
+        return redirect(url_for("login"))
+
+    if not new_password or not confirm_password:
+        flash("Informe a nova senha")
+        return redirect(url_for("reset_password", uid=uid, token=token))
+
+    if new_password != confirm_password:
+        flash("As senhas nao conferem")
+        return redirect(url_for("reset_password", uid=uid, token=token))
+
+    if len(new_password) < 6:
+        flash("A senha deve ter pelo menos 6 caracteres")
+        return redirect(url_for("reset_password", uid=uid, token=token))
+
+    user = User.query.get(uid)
+    if not user or not check_password_hash(user.password_reset_token_hash, token):
+        flash("Link de recuperacao invalido")
+        return redirect(url_for("login"))
+
+    user.password = generate_password_hash(new_password)
+    user.password_reset_token_hash = None
+    user.password_reset_expires_at = None
+    db.session.commit()
+
+    flash("Senha alterada com sucesso. Voce pode entrar.")
+    return redirect(url_for("login"))
 
 
 @app.route("/logout")

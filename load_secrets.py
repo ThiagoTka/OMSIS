@@ -20,40 +20,51 @@ def load_secret(secret_id):
         secret_string = response.payload.data.decode("UTF-8")
         
         if secret_string:
-            print(f"✓ Secret '{secret_id}' carregado com sucesso")
+            print(f"[OK] Secret '{secret_id}' carregado com sucesso")
             return secret_string
         else:
-            print(f"⚠️  Secret '{secret_id}' está vazio")
+            print(f"[WARN] Secret '{secret_id}' está vazio")
             return None
             
     except Exception as e:
-        print(f"⚠️  Erro ao carregar secret {secret_id}: {type(e).__name__}: {e}")
+        print(f"[WARN] Erro ao carregar secret {secret_id}: {type(e).__name__}: {e}")
         return None
 
 
 def load_secrets():
     """Carrega todos os secrets necessários"""
     
-    # Se já está em desenvolvimento local com .env, não carrega do GCP
+    # Se já está em desenvolvimento local com .env, carrega dele
     if os.path.exists(".env"):
-        print("ℹ️  Arquivo .env encontrado, pulando carregamento de secrets do GCP")
-        return
-    
-    # Se as variáveis já existem, não carrega
-    if os.environ.get("DB_PASS") and os.environ.get("SECRET_KEY"):
-        print("ℹ️  Variáveis de ambiente já configuradas, pulando Secret Manager")
+        print("[INFO] Arquivo .env encontrado, carregando variaveis...")
+        with open(".env") as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#"):
+                    if "=" in line:
+                        key, val = line.split("=", 1)
+                        os.environ[key.strip()] = val.strip()
+        print("[OK] Variaveis carregadas do .env")
         return
     
     # Carregar secrets do GCP
-    print("ℹ️  Carregando secrets do Google Secret Manager...")
+    print("[INFO] Carregando secrets do Google Secret Manager...")
     
     secrets_to_load = {
         "DB_PASS": "db-pass",
         "SECRET_KEY": "secret-key",
+        "SMTP_HOST": "smtp-host",
+        "SMTP_PORT": "smtp-port",
+        "SMTP_USER": "smtp-user",
+        "SMTP_PASS": "smtp-pass",
+        "SMTP_FROM": "smtp-from",
     }
     
     loaded_count = 0
     for env_var, secret_id in secrets_to_load.items():
+        if os.environ.get(env_var):
+            loaded_count += 1
+            continue
         secret_value = load_secret(secret_id)
         if secret_value:
             os.environ[env_var] = secret_value
@@ -62,9 +73,9 @@ def load_secrets():
             print(f"✗ Erro ao carregar {env_var}")
     
     if loaded_count == len(secrets_to_load):
-        print(f"✅ Todos os {loaded_count} secrets carregados com sucesso")
+        print(f"[OK] Todos os {loaded_count} secrets carregados com sucesso")
     else:
-        print(f"⚠️  {loaded_count}/{len(secrets_to_load)} secrets carregados")
+        print(f"[WARN] {loaded_count}/{len(secrets_to_load)} secrets carregados")
 
 
 if __name__ == "__main__":

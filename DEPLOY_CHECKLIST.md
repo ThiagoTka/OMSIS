@@ -8,14 +8,27 @@
 cat > .env << EOF
 DB_PASS=sua_senha_forte_aqui
 SECRET_KEY=sua_chave_secreta_aqui
+APP_BASE_URL=https://imsis.com.br
+SMTP_HOST=smtp.hostinger.com
+SMTP_PORT=465
+SMTP_USER=accounts@imsis.com.br
+SMTP_PASS=sua_senha_smtp_aqui
+SMTP_FROM=accounts@imsis.com.br
+SMTP_USE_SSL=true
+SMTP_USE_TLS=false
 EOF
 
 # Execute o script de setup
+# Linux/macOS (bash)
 bash setup_gcp_secrets.sh
+
+# Windows (PowerShell)
+./setup_gcp_secrets.ps1
 ```
 - [ ] Arquivo `.env` criado localmente
 - [ ] Script `setup_gcp_secrets.sh` executado com sucesso
 - [ ] Secrets verificados no GCP Console
+- [ ] SMTP configurado (host, porta, user, pass, from)
 
 ### 2. 🗄️ Cloud SQL
 ```bash

@@ -24,6 +24,11 @@ if [ ! -f .env ]; then
     echo "   Crie um arquivo .env com:"
     echo "   DB_PASS=sua_senha_secreta"
     echo "   SECRET_KEY=sua_chave_secreta"
+    echo "   SMTP_HOST=smtp.hostinger.com"
+    echo "   SMTP_PORT=465"
+    echo "   SMTP_USER=accounts@imsis.com.br"
+    echo "   SMTP_PASS=sua_senha_smtp"
+    echo "   SMTP_FROM=accounts@imsis.com.br"
     exit 1
 fi
 
@@ -32,6 +37,11 @@ export $(grep -v '^#' .env | xargs)
 
 if [ -z "$DB_PASS" ] || [ -z "$SECRET_KEY" ]; then
     echo "❌ DB_PASS ou SECRET_KEY não encontrados no .env"
+    exit 1
+fi
+
+if [ -z "$SMTP_HOST" ] || [ -z "$SMTP_PORT" ] || [ -z "$SMTP_USER" ] || [ -z "$SMTP_PASS" ] || [ -z "$SMTP_FROM" ]; then
+    echo "❌ SMTP_HOST/SMTP_PORT/SMTP_USER/SMTP_PASS/SMTP_FROM não encontrados no .env"
     exit 1
 fi
 
@@ -60,6 +70,56 @@ else
     echo -n "$SECRET_KEY" | gcloud secrets create secret-key --data-file=- --replication-policy="automatic" --quiet
 fi
 
+# SMTP_HOST
+echo "  3. Criando smtp-host..."
+if gcloud secrets describe smtp-host --quiet 2>/dev/null; then
+    echo "     ✓ smtp-host já existe, atualizando..."
+    echo -n "$SMTP_HOST" | gcloud secrets versions add smtp-host --data-file=-
+else
+    echo "     Criando novo secret..."
+    echo -n "$SMTP_HOST" | gcloud secrets create smtp-host --data-file=- --replication-policy="automatic" --quiet
+fi
+
+# SMTP_PORT
+echo "  4. Criando smtp-port..."
+if gcloud secrets describe smtp-port --quiet 2>/dev/null; then
+    echo "     ✓ smtp-port já existe, atualizando..."
+    echo -n "$SMTP_PORT" | gcloud secrets versions add smtp-port --data-file=-
+else
+    echo "     Criando novo secret..."
+    echo -n "$SMTP_PORT" | gcloud secrets create smtp-port --data-file=- --replication-policy="automatic" --quiet
+fi
+
+# SMTP_USER
+echo "  5. Criando smtp-user..."
+if gcloud secrets describe smtp-user --quiet 2>/dev/null; then
+    echo "     ✓ smtp-user já existe, atualizando..."
+    echo -n "$SMTP_USER" | gcloud secrets versions add smtp-user --data-file=-
+else
+    echo "     Criando novo secret..."
+    echo -n "$SMTP_USER" | gcloud secrets create smtp-user --data-file=- --replication-policy="automatic" --quiet
+fi
+
+# SMTP_PASS
+echo "  6. Criando smtp-pass..."
+if gcloud secrets describe smtp-pass --quiet 2>/dev/null; then
+    echo "     ✓ smtp-pass já existe, atualizando..."
+    echo -n "$SMTP_PASS" | gcloud secrets versions add smtp-pass --data-file=-
+else
+    echo "     Criando novo secret..."
+    echo -n "$SMTP_PASS" | gcloud secrets create smtp-pass --data-file=- --replication-policy="automatic" --quiet
+fi
+
+# SMTP_FROM
+echo "  7. Criando smtp-from..."
+if gcloud secrets describe smtp-from --quiet 2>/dev/null; then
+    echo "     ✓ smtp-from já existe, atualizando..."
+    echo -n "$SMTP_FROM" | gcloud secrets versions add smtp-from --data-file=-
+else
+    echo "     Criando novo secret..."
+    echo -n "$SMTP_FROM" | gcloud secrets create smtp-from --data-file=- --replication-policy="automatic" --quiet
+fi
+
 echo ""
 echo "✅ Secrets criados com sucesso!"
 echo ""
@@ -77,6 +137,31 @@ gcloud secrets add-iam-policy-binding db-pass \
     --quiet || true
 
 gcloud secrets add-iam-policy-binding secret-key \
+    --member="serviceAccount:$SERVICE_ACCOUNT" \
+    --role="roles/secretmanager.secretAccessor" \
+    --quiet || true
+
+gcloud secrets add-iam-policy-binding smtp-host \
+    --member="serviceAccount:$SERVICE_ACCOUNT" \
+    --role="roles/secretmanager.secretAccessor" \
+    --quiet || true
+
+gcloud secrets add-iam-policy-binding smtp-port \
+    --member="serviceAccount:$SERVICE_ACCOUNT" \
+    --role="roles/secretmanager.secretAccessor" \
+    --quiet || true
+
+gcloud secrets add-iam-policy-binding smtp-user \
+    --member="serviceAccount:$SERVICE_ACCOUNT" \
+    --role="roles/secretmanager.secretAccessor" \
+    --quiet || true
+
+gcloud secrets add-iam-policy-binding smtp-pass \
+    --member="serviceAccount:$SERVICE_ACCOUNT" \
+    --role="roles/secretmanager.secretAccessor" \
+    --quiet || true
+
+gcloud secrets add-iam-policy-binding smtp-from \
     --member="serviceAccount:$SERVICE_ACCOUNT" \
     --role="roles/secretmanager.secretAccessor" \
     --quiet || true
