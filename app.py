@@ -735,6 +735,43 @@ def check_columns():
         return f"ERRO ao verificar colunas: {e}", 500
 
 
+@app.route("/check-secrets")
+def check_secrets():
+    """Debug endpoint para verificar secrets carregados"""
+    smtp_vars = {
+        "SMTP_HOST": os.environ.get("SMTP_HOST", "[vazio]"),
+        "SMTP_PORT": os.environ.get("SMTP_PORT", "[vazio]"),
+        "SMTP_USER": os.environ.get("SMTP_USER", "[vazio]"),
+        "SMTP_PASS": os.environ.get("SMTP_PASS", "[ausente]" if not os.environ.get("SMTP_PASS") else "[setado]"),
+        "SMTP_FROM": os.environ.get("SMTP_FROM", "[vazio]"),
+        "DB_PASS": os.environ.get("DB_PASS", "[vazio]"),
+    }
+    
+    # Checkar arquivos de secrets do Cloud Run
+    files_info = {}
+    for secret_name in ["smtp-host", "smtp-port", "smtp-user", "smtp-pass", "smtp-from"]:
+        secret_path = f"/var/run/secrets/cloud.google.com/secret/{secret_name}/latest"
+        files_info[secret_path] = "existe" if os.path.exists(secret_path) else "nao existe"
+    
+    result = f"""
+<h2>Variaveis de Ambiente (os.environ):</h2>
+<pre>{chr(10).join([f'{k}={v}' for k, v in smtp_vars.items()])}</pre>
+
+<h2>Arquivos de Secrets do Cloud Run:</h2>
+<pre>{chr(10).join([f'{k}: {v}' for k, v in files_info.items()])}</pre>
+
+<h2>app.config SMTP:</h2>
+<pre>
+SMTP_HOST={app.config.get('SMTP_HOST')}
+SMTP_PORT={app.config.get('SMTP_PORT')}
+SMTP_USER={app.config.get('SMTP_USER')}
+SMTP_PASS={app.config.get('SMTP_PASS', '[vazio]')}
+SMTP_FROM={app.config.get('SMTP_FROM')}
+</pre>
+    """
+    
+    return result, 200, {"Content-Type": "text/html"}
+
 
 @app.route("/register", methods=["GET", "POST"])
 def register():

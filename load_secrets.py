@@ -125,7 +125,6 @@ def try_load_from_cloud_run_files():
     
     print("[DEBUG] Nenhum arquivo de secret found em /var/run/secrets/")
     return False
-        print(f"[WARN] {loaded_count}/{len(secrets_to_load)} secrets carregados")
 
 
 if __name__ == "__main__":
