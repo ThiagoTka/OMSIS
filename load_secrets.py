@@ -34,6 +34,12 @@ def load_secret(secret_id):
 def load_secrets():
     """Carrega todos os secrets necessários"""
     
+    # Em Cloud Run com --set-secrets, os secrets ja sao variaveis de ambiente
+    # Verificar se ao menos um secret ja esta carregado
+    if os.environ.get("DB_PASS"):
+        print("[INFO] Secrets ja estao em os.environ (carregados pelo Cloud Run)")
+        return
+    
     # Se já está em desenvolvimento local com .env, carrega dele
     if os.path.exists(".env"):
         print("[INFO] Arquivo .env encontrado, carregando variaveis...")
@@ -47,7 +53,7 @@ def load_secrets():
         print("[OK] Variaveis carregadas do .env")
         return
     
-    # Carregar secrets do GCP
+    # Carregar secrets do GCP (fallback, raramente usado)
     print("[INFO] Carregando secrets do Google Secret Manager...")
     
     secrets_to_load = {
