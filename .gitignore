@@ -18,6 +18,11 @@ instance/
 database.db
 dev.db
 
+# Arquivos de configuração local (secrets)
+.env
+.env.local
+.env.*.local
+
 # Arquivos de ambiente e secrets
 .env
 .env.local
